@@ -37,9 +37,22 @@
 // }
 
 #include "Options.hxx"
+#include "Player.hxx"
 
 int main(int argc, char **argv)
 {
-    if(!fpd::Options::getInstance().parse(argc, argv))
+    if(!fpd::Options::instance().parse(argc, argv))
         return 0;
+
+    switch(fpd::Options::instance()._mode)
+    {
+        case 0: // get stream infos
+        for(auto& f : fpd::Options::instance()._files)
+            fpd::Player::instance().getStreamInfo(f);
+            break;
+        default:
+            break;
+    }
+
+    return 0;
 }

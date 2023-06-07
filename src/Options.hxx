@@ -13,17 +13,17 @@ namespace fpd
         Options(const Options &) = delete;
         Options &operator=(const Options &) = delete;
 
-        static Options &getInstance()
+        static Options &instance()
         {
             static Options instance;
             return instance;
         }
 
         bool parse(int argc, char **argv);
-    
-    private:
 
+    private:
     public:
         std::vector<std::string> _files;
+        int _mode{0};
     };
 }

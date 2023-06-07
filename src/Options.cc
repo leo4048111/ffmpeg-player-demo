@@ -16,27 +16,35 @@ namespace fpd
         auto &M = parser["mode"]
                       .abbreviation('m')
                       .type(po::u32)
-                      .description("player mode")
-                      .fallback(0);
+                      .description("player mode");
 
         auto &files = parser[""]
                           .callback([&](const std::string &value)
-                                    { LOG_INFO(value); _files.push_back(value); });
+                                    { _files.push_back(value); });
 
-        if(!parser(argc, argv) || help.was_set())
+        if (!parser(argc, argv) || help.was_set())
         {
             std::cout << parser << std::endl;
             return false;
         }
 
-        if(!files.size()) {
+        if (!files.size())
+        {
             LOG_ERROR("No files specified");
             return false;
         }
 
-        for(auto& f : _files) {
-            LOG_INFO("File: %s", f.c_str());
+        for (auto &f : _files)
+        {
+            LOG_INFO("Input file: %s", f.c_str());
         }
+
+        if (!M.was_set())
+            LOG_WARNING("No mode specified, assuming default %d", _mode);
+        else
+            _mode = M.get().u32;
+
+        LOG_INFO("Running mode: %d", _mode);
 
         return true;
     }

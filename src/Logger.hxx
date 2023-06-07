@@ -15,7 +15,7 @@ namespace fpd
             ERROR
         };
 
-        static Logger &getInstance()
+        static Logger &instance()
         {
             static Logger instance;
             return instance;
@@ -72,6 +72,18 @@ namespace fpd
     };
 }
 
-#define LOG_INFO(fmt, ...) fpd::Logger::getInstance().log(Logger::INFO, fpd::Logger::format(fmt, ##__VA_ARGS__))
-#define LOG_WARNING(fmt, ...) fpd::Logger::getInstance().log(Logger::WARNING, fpd::Logger::format(fmt, ##__VA_ARGS__))
-#define LOG_ERROR(fmt, ...) fpd::Logger::getInstance().log(Logger::ERROR, fpd::Logger::format(fmt, ##__VA_ARGS__))
+#define LOG_INFO(fmt, ...)                                                                    \
+    do                                                                                        \
+    {                                                                                         \
+        fpd::Logger::instance().log(Logger::INFO, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
+    } while (0)
+#define LOG_WARNING(fmt, ...)                                                                    \
+    do                                                                                           \
+    {                                                                                            \
+        fpd::Logger::instance().log(Logger::WARNING, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
+    } while (0)
+#define LOG_ERROR(fmt, ...)                                                                    \
+    do                                                                                         \
+    {                                                                                          \
+        fpd::Logger::instance().log(Logger::ERROR, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
+    } while (0)
