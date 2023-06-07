@@ -42,20 +42,20 @@
 
 int main(int argc, char **argv)
 {
-    if(!fpd::Options::instance().parse(argc, argv))
+    if (!fpd::Options::instance().parse(argc, argv))
         return 0;
 
-    switch(fpd::Options::instance()._mode)
+    switch (fpd::Options::instance()._mode)
     {
-        case 0: // get stream infos
-        for(auto& f : fpd::Options::instance()._files)
+    case 0: // get stream infos
+        for (auto &f : fpd::Options::instance()._files)
         {
             LOG_INFO("Get stream infos for file: %s", f.c_str());
             fpd::Player::instance().getStreamInfo(f);
         }
-            break;
-        default:
-            break;
+        break;
+    default:
+        break;
     }
 
     return 0;
