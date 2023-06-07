@@ -21,6 +21,8 @@ namespace fpd
 
         av_dump_format(_av_format_ctx, 0, file.data(), 0);
 
+        avformat_close_input(&_av_format_ctx);
+
         return true;
     }
 }
