@@ -1,17 +1,17 @@
-#include <iostream>
+// #include <iostream>
 
-extern "C" {
-    #include "libavcodec/avcodec.h"
-    #include "libavformat/avformat.h"
-    #include "libavutil/avutil.h"
-}
+// extern "C" {
+//     #include "libavcodec/avcodec.h"
+//     #include "libavformat/avformat.h"
+//     #include "libavutil/avutil.h"
+// }
 
-int main(int argc, char** argv) {
-    // Register all formats and codecs
-    std::cout << "av_version_info:" << av_version_info() << std::endl;
-    std::cout << "av_version_info:" << avcodec_configuration() << std::endl;
-    return 0;
-}
+// int main(int argc, char** argv) {
+//     // Register all formats and codecs
+//     std::cout << "av_version_info:" << av_version_info() << std::endl;
+//     std::cout << "av_version_info:" << avcodec_configuration() << std::endl;
+//     return 0;
+// }
 
 // #include <SDL2/SDL.h>
 
@@ -35,3 +35,11 @@ int main(int argc, char** argv) {
 
 //     return 0;
 // }
+
+#include "Options.hxx"
+
+int main(int argc, char **argv)
+{
+    if(!fpd::Options::getInstance().parse(argc, argv))
+        return 0;
+}
