@@ -16,7 +16,6 @@ namespace fpd
         }
 
         if (avformat_find_stream_info(_av_format_ctx, nullptr) < 0) {
-            LOG_ERROR("Failed to find stream info");
             return false;
         }
 

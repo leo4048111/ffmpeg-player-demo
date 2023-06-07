@@ -51,7 +51,11 @@ int main(int argc, char **argv)
         for (auto &f : fpd::Options::instance()._files)
         {
             LOG_INFO("Get stream infos for file: %s", f.c_str());
-            fpd::Player::instance().getStreamInfo(f);
+            if(!fpd::Player::instance().getStreamInfo(f))
+            {
+                LOG_ERROR("Failed to get stream info for: %s", f.c_str());
+                return -1;
+            }
         }
         break;
     default:
