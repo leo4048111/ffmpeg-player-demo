@@ -38,6 +38,7 @@
 
 #include "Options.hxx"
 #include "Player.hxx"
+#include "Logger.hxx"
 
 int main(int argc, char **argv)
 {
@@ -48,7 +49,10 @@ int main(int argc, char **argv)
     {
         case 0: // get stream infos
         for(auto& f : fpd::Options::instance()._files)
+        {
+            LOG_INFO("Get stream infos for file: %s", f.c_str());
             fpd::Player::instance().getStreamInfo(f);
+        }
             break;
         default:
             break;

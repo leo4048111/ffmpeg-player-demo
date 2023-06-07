@@ -75,15 +75,15 @@ namespace fpd
 #define LOG_INFO(fmt, ...)                                                                    \
     do                                                                                        \
     {                                                                                         \
-        fpd::Logger::instance().log(Logger::INFO, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
+        fpd::Logger::instance().log(fpd::Logger::INFO, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
     } while (0)
 #define LOG_WARNING(fmt, ...)                                                                    \
     do                                                                                           \
     {                                                                                            \
-        fpd::Logger::instance().log(Logger::WARNING, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
+        fpd::Logger::instance().log(fpd::Logger::WARNING, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
     } while (0)
 #define LOG_ERROR(fmt, ...)                                                                    \
     do                                                                                         \
     {                                                                                          \
-        fpd::Logger::instance().log(Logger::ERROR, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
+        fpd::Logger::instance().log(fpd::Logger::ERROR, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
     } while (0)
