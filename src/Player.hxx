@@ -49,5 +49,7 @@ namespace fpd
 
     public:
         bool getStreamInfo(const std::string_view &file);
+
+        bool dumpDemuxer(const std::string_view &file);
     };
 }

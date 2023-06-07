@@ -52,10 +52,15 @@ int main(int argc, char **argv)
         {
             LOG_INFO("Get stream infos for file: %s", f.c_str());
             if(!fpd::Player::instance().getStreamInfo(f))
-            {
-                LOG_ERROR("Failed to get stream info for: %s", f.c_str());
                 return -1;
-            }
+        }
+        break;
+    case 1:
+        for (auto &f : fpd::Options::instance()._files)
+        {
+            LOG_INFO("Dump H.264/265 and acc streams for file: %s", f.c_str());
+            if(!fpd::Player::instance().dumpDemuxer(f))
+                return -1;
         }
         break;
     default:
