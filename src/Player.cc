@@ -126,7 +126,7 @@ namespace fpd
             return ec;
         }
 
-        if ((avformat_alloc_output_context2(&audioOutFormatCtx, nullptr, nullptr, audioFilename.c_str())))
+        if ((ec = avformat_alloc_output_context2(&audioOutFormatCtx, nullptr, nullptr, audioFilename.c_str())))
         {
             LOG_ERROR("Failed to allocate output context for audio file: %s", audioFilename.c_str());
             return ec;
