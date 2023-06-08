@@ -5,16 +5,14 @@ project(ffmpeg_player_demo)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_BUILD_TYPE Debug)
 
-# FFmpeg的安装目录，可以通过命令"brew info ffmpeg"获取
 set(FFMPEG_DIR /usr/local/Cellar/ffmpeg/6.0)
 set(SDL_DIR /usr/local/Cellar/sdl2/2.26.5)
 
-# 头文件搜索路径
 include_directories(
     third_party/
     ${FFMPEG_DIR}/include/
     ${SDL_DIR}/include/)
-# 动态链接库或静态链接库的搜索路径
+
 link_directories(
     ${FFMPEG_DIR}/lib/
     ${SDL_DIR}/lib/
@@ -26,16 +24,15 @@ file(GLOB_RECURSE SRC_DIR "src/*.cc")
 
 add_executable(ffmpeg_player_demo ${SRC_DIR})
 
-#链接库
 target_link_libraries(ffmpeg_player_demo
-        # #FFmpeg 库
+        # FFmpeg
         avcodec
         avfilter
         avformat
         avutil
         swresample
         swscale
-        #SDL 库
+        # SDL 
         SDL2
         SDL2main
         )
