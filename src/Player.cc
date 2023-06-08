@@ -32,7 +32,7 @@ namespace fpd
 
     // avformat_open_input -> avformat_find_stream_info -> avcodec_find_decoder(optional) -> avcodec_alloc_context3 -> avcodec_parameters_to_context
     // -> avcodec_open2 -> int ret = av_read_frame -> if frame is from video stream, write to video file, otherwise write to audio file -> av_packet_unref
-    bool Player::dumpDemuxer(const std::string_view &file)
+    bool Player::dumpVideoAndAudioStream(const std::string_view &file)
     {
         if (avformat_open_input(&_av_format_ctx, file.data(), nullptr, nullptr) != 0)
         {

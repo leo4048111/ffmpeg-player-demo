@@ -59,7 +59,7 @@ int main(int argc, char **argv)
         for (auto &f : fpd::Options::instance()._files)
         {
             LOG_INFO("Dump H.264/265 and acc streams for file: %s", f.c_str());
-            if(!fpd::Player::instance().dumpDemuxer(f))
+            if (!fpd::Player::instance().dumpVideoAndAudioStream(f))
                 return -1;
         }
         break;
