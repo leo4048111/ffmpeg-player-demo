@@ -1,2 +1,2 @@
 # ffmpeg_player_demo
- some dogshit ffmpeg player demo, for learning ffmpeg
+ lame ffmpeg player demo with ffmpeg/SDL2, for learning ffmpeg
