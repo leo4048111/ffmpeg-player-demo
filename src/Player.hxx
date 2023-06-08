@@ -50,5 +50,7 @@ namespace fpd
         int getStreamInfo(const std::string_view &file);
 
         int dumpVideoAndAudioStream(const std::string_view &file);
+
+        int lameDumpVideoAndAudioStream(const std::string_view &file);  // lame implementation, just for test
     };
 }

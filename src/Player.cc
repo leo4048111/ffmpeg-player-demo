@@ -228,4 +228,75 @@ namespace fpd
 
         return ec;
     }
+
+    int Player::lameDumpVideoAndAudioStream(const std::string_view &file)
+    {
+        int ec = 0;
+
+        AVFormatContext* avFormatCtx = avformat_alloc_context();
+
+        if ((ec = avformat_open_input(&avFormatCtx, file.data(), nullptr, nullptr)) < 0)
+        {
+            LOG_ERROR("Failed to open input file: %s", file.data());
+            return ec;
+        }
+
+        if ((ec = avformat_find_stream_info(avFormatCtx, nullptr)) < 0)
+        {
+            LOG_ERROR("Failed to find stream info for input file: %s", file.data());
+            return ec;
+        }
+
+        int videoStreamidx, audioStreamidx;
+
+        ec = av_find_best_stream(avFormatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+        if (ec < 0)
+        {
+            LOG_ERROR("Failed to find best video stream for input file: %s", file.data());
+            return ec;
+        }
+        else
+            videoStreamidx = ec;
+
+        ec = av_find_best_stream(avFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+        if (ec < 0)
+        {
+            LOG_ERROR("Failed to find best audio stream for input file: %s", file.data());
+            return ec;
+        }
+        else
+            audioStreamidx = ec;
+
+        auto filenameNoExt = Utils::getFilenameNoExt(file);
+        auto videoFilename = filenameNoExt + ".h265";
+        auto audioFilename = filenameNoExt + ".aac";
+
+        FILE* videoFile = fopen(videoFilename.c_str(), "wb");
+        FILE* audioFile = fopen(audioFilename.c_str(), "wb");
+
+        AVPacket pkt;
+
+        while (av_read_frame(avFormatCtx, &pkt) >= 0)
+        {
+            if (pkt.stream_index == videoStreamidx)
+            {
+                fwrite(pkt.data, 1, pkt.size, videoFile);
+            }
+            else if(pkt.stream_index == audioStreamidx)
+            {
+                fwrite(pkt.data, 1, pkt.size, audioFile);
+            }
+            av_packet_unref(&pkt);
+        }
+
+        LOG_INFO("Dumped video stream to file: %s", videoFilename.c_str());
+        LOG_INFO("Dumped audio stream to file: %s", audioFilename.c_str());
+
+        fclose(videoFile);
+        fclose(audioFile);
+
+        avformat_free_context(avFormatCtx);
+
+        return ec;
+    }
 }
