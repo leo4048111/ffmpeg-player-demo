@@ -176,24 +176,27 @@ namespace fpd
             if (pkt.stream_index == videoStreamidx)
             {
                 avcodec_send_packet(videoInCodecCtx, &pkt);
-                avcodec_receive_frame(videoInCodecCtx, frame);
+                while (avcodec_receive_frame(videoInCodecCtx, frame) == 0)
+                {
+                    AVFrame *outFrame = av_frame_alloc();
+                    outFrame->format = videoOutCodecCtx->pix_fmt;
+                    outFrame->width = videoInCodecCtx->width;
+                    outFrame->height = videoInCodecCtx->height;
+                    av_frame_get_buffer(outFrame, 0);
+                    sws_scale(swsCtx, frame->data, frame->linesize, 0, videoInCodecCtx->height, outFrame->data, outFrame->linesize);
 
-                AVFrame *outFrame = av_frame_alloc();
-                outFrame->format = videoOutCodecCtx->pix_fmt;
-                outFrame->width = videoInCodecCtx->width;
-                outFrame->height = videoInCodecCtx->height;
-                av_frame_get_buffer(outFrame, 0);
-                sws_scale(swsCtx, frame->data, frame->linesize, 0, videoInCodecCtx->height, outFrame->data, outFrame->linesize);
+                    avcodec_send_frame(videoOutCodecCtx, outFrame);
 
-                avcodec_send_frame(videoOutCodecCtx, outFrame);
-                avcodec_receive_packet(videoOutCodecCtx, &pkt);
-
-                pkt.stream_index = videoOutStream->index;
-                pkt.pts = av_rescale_q_rnd(pkt.pts, videoInStream->time_base, videoOutStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-                pkt.dts = av_rescale_q_rnd(pkt.dts, videoInStream->time_base, videoOutStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-                pkt.duration = av_rescale_q(pkt.duration, videoInStream->time_base, videoOutStream->time_base);
-                av_interleaved_write_frame(videoOutFormatCtx, &pkt);
-                av_frame_free(&outFrame);
+                    while (avcodec_receive_packet(videoOutCodecCtx, &pkt) == 0)
+                    {
+                        pkt.stream_index = videoOutStream->index;
+                        pkt.pts = av_rescale_q_rnd(pkt.pts, videoInStream->time_base, videoOutStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                        pkt.dts = av_rescale_q_rnd(pkt.dts, videoInStream->time_base, videoOutStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                        pkt.duration = av_rescale_q(pkt.duration, videoInStream->time_base, videoOutStream->time_base);
+                        av_interleaved_write_frame(videoOutFormatCtx, &pkt);
+                    }
+                    av_frame_free(&outFrame);
+                }
             }
             // else if(pkt.stream_index == audioStreamidx)
             // {
@@ -233,7 +236,7 @@ namespace fpd
     {
         int ec = 0;
 
-        AVFormatContext* avFormatCtx = avformat_alloc_context();
+        AVFormatContext *avFormatCtx = avformat_alloc_context();
 
         if ((ec = avformat_open_input(&avFormatCtx, file.data(), nullptr, nullptr)) < 0)
         {
@@ -271,8 +274,8 @@ namespace fpd
         auto videoFilename = filenameNoExt + ".h265";
         auto audioFilename = filenameNoExt + ".aac";
 
-        FILE* videoFile = fopen(videoFilename.c_str(), "wb");
-        FILE* audioFile = fopen(audioFilename.c_str(), "wb");
+        FILE *videoFile = fopen(videoFilename.c_str(), "wb");
+        FILE *audioFile = fopen(audioFilename.c_str(), "wb");
 
         AVPacket pkt;
 
@@ -282,7 +285,7 @@ namespace fpd
             {
                 fwrite(pkt.data, 1, pkt.size, videoFile);
             }
-            else if(pkt.stream_index == audioStreamidx)
+            else if (pkt.stream_index == audioStreamidx)
             {
                 fwrite(pkt.data, 1, pkt.size, audioFile);
             }
