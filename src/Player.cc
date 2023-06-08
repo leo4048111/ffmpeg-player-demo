@@ -290,11 +290,9 @@ namespace fpd
             }
         }
 
-        av_dump_format(outFormatCtx, 0, "output.mkv", 1);
-
         if (!(outFormatCtx->flags & AVFMT_NOFILE))
         {
-            ec = avio_open(&outFormatCtx->pb, "output.mkv", AVIO_FLAG_WRITE);
+            ec = avio_open(&outFormatCtx->pb, outFilename.c_str(), AVIO_FLAG_WRITE);
             if (ec < 0)
             {
                 LOG_ERROR("Could not open output file: %s", "output.mkv");
