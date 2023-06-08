@@ -274,32 +274,76 @@ namespace fpd
         auto videoFilename = filenameNoExt + ".h265";
         auto audioFilename = filenameNoExt + ".aac";
 
-        FILE *videoFile = fopen(videoFilename.c_str(), "wb");
-        FILE *audioFile = fopen(audioFilename.c_str(), "wb");
+        auto outFilename = filenameNoExt + ".mkv";
+
+        AVFormatContext *outFormatCtx;
+        avformat_alloc_output_context2(&outFormatCtx, NULL, "matroska", outFilename.c_str());
+
+        // Copy stream details to output
+        for (int i = 0; i < avFormatCtx->nb_streams; i++)
+        {
+            if (i == videoStreamidx || i == audioStreamidx)
+            {
+                AVStream *outStream = avformat_new_stream(outFormatCtx, avcodec_find_encoder(avFormatCtx->streams[i]->codecpar->codec_id));
+                avcodec_parameters_copy(outStream->codecpar, avFormatCtx->streams[i]->codecpar);
+                outStream->codecpar->codec_tag = 0;
+            }
+        }
+
+        av_dump_format(outFormatCtx, 0, "output.mkv", 1);
+
+        if (!(outFormatCtx->flags & AVFMT_NOFILE))
+        {
+            ec = avio_open(&outFormatCtx->pb, "output.mkv", AVIO_FLAG_WRITE);
+            if (ec < 0)
+            {
+                LOG_ERROR("Could not open output file: %s", "output.mkv");
+                return ec;
+            }
+        }
+
+        // Write file header
+        ec = avformat_write_header(outFormatCtx, NULL);
+        if (ec < 0)
+        {
+            LOG_ERROR("Error occurred when opening output file: %s", "output.mkv");
+            return ec;
+        }
 
         AVPacket pkt;
-
         while (av_read_frame(avFormatCtx, &pkt) >= 0)
         {
-            if (pkt.stream_index == videoStreamidx)
+            AVStream *inStream, *outStream;
+
+            inStream = avFormatCtx->streams[pkt.stream_index];
+            if (pkt.stream_index == videoStreamidx || pkt.stream_index == audioStreamidx)
             {
-                fwrite(pkt.data, 1, pkt.size, videoFile);
-            }
-            else if (pkt.stream_index == audioStreamidx)
-            {
-                fwrite(pkt.data, 1, pkt.size, audioFile);
+                pkt.stream_index = (pkt.stream_index == videoStreamidx) ? videoStreamidx : audioStreamidx;
+                outStream = outFormatCtx->streams[pkt.stream_index];
+
+                // Copy packet
+                pkt.pts = av_rescale_q_rnd(pkt.pts, inStream->time_base, outStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                pkt.dts = av_rescale_q_rnd(pkt.dts, inStream->time_base, outStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                pkt.duration = av_rescale_q(pkt.duration, inStream->time_base, outStream->time_base);
+                pkt.pos = -1;
+
+                // Write packet
+                av_interleaved_write_frame(outFormatCtx, &pkt);
             }
             av_packet_unref(&pkt);
         }
 
-        LOG_INFO("Dumped video stream to file: %s", videoFilename.c_str());
-        LOG_INFO("Dumped audio stream to file: %s", audioFilename.c_str());
+        // Write file trailer
+        av_write_trailer(outFormatCtx);
 
-        fclose(videoFile);
-        fclose(audioFile);
+        avformat_close_input(&avFormatCtx);
 
-        avformat_free_context(avFormatCtx);
+        /* close output */
+        if (outFormatCtx && !(outFormatCtx->flags & AVFMT_NOFILE))
+            avio_closep(&outFormatCtx->pb);
 
-        return ec;
+        avformat_free_context(outFormatCtx);
+
+        return 0;
     }
 }
