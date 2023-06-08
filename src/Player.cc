@@ -147,13 +147,13 @@ namespace fpd
         videoOutCodecCtx->height = videoInCodecCtx->height;
         videoOutCodecCtx->pix_fmt = videoOutCodec->pix_fmts[0];
         videoOutCodecCtx->time_base = videoInStream->time_base;
-        avcodec_open2(videoOutCodecCtx, videoOutCodec, nullptr);
-        avcodec_open2(audioOutCodecCtx, audioOutCodec, nullptr);
+        ec = avcodec_open2(videoOutCodecCtx, videoOutCodec, nullptr);
+        // ec = avcodec_open2(audioOutCodecCtx, audioOutCodec, nullptr);
 
         avcodec_parameters_from_context(videoOutStream->codecpar, videoOutCodecCtx);
         videoOutStream->time_base = videoOutCodecCtx->time_base;
-        avcodec_parameters_from_context(audioOutStream->codecpar, audioOutCodecCtx);
-        audioOutStream->time_base = audioOutCodecCtx->time_base;
+        // avcodec_parameters_from_context(audioOutStream->codecpar, audioOutCodecCtx);
+        // audioOutStream->time_base = audioOutCodecCtx->time_base;
 
         if ((ec = avformat_write_header(videoOutFormatCtx, nullptr)) < 0)
         {
@@ -189,6 +189,9 @@ namespace fpd
                 avcodec_receive_packet(videoOutCodecCtx, &pkt);
 
                 pkt.stream_index = videoOutStream->index;
+                pkt.pts = av_rescale_q_rnd(pkt.pts, videoInStream->time_base, videoOutStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                pkt.dts = av_rescale_q_rnd(pkt.dts, videoInStream->time_base, videoOutStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                pkt.duration = av_rescale_q(pkt.duration, videoInStream->time_base, videoOutStream->time_base);
                 av_interleaved_write_frame(videoOutFormatCtx, &pkt);
                 av_frame_free(&outFrame);
             }
@@ -209,7 +212,7 @@ namespace fpd
 
         LOG_INFO("Dumped video stream to file: %s", videoFilename.c_str());
         LOG_INFO("Dumped audio stream to file: %s", audioFilename.c_str());
-        
+
         av_frame_free(&frame);
         sws_freeContext(swsCtx);
         avcodec_close(videoInCodecCtx);
@@ -218,7 +221,7 @@ namespace fpd
         avcodec_close(audioOutCodecCtx);
 
         avformat_close_input(&avFormatCtx);
-        
+
         avformat_free_context(videoOutFormatCtx);
         avformat_free_context(audioOutFormatCtx);
         avformat_free_context(avFormatCtx);
