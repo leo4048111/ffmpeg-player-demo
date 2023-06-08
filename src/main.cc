@@ -45,27 +45,29 @@ int main(int argc, char **argv)
     if (!fpd::Options::instance().parse(argc, argv))
         return 0;
 
+    int ec = 0;
+
     switch (fpd::Options::instance()._mode)
     {
     case 0: // get stream infos
         for (auto &f : fpd::Options::instance()._files)
         {
             LOG_INFO("Get stream infos for file: %s", f.c_str());
-            if(!fpd::Player::instance().getStreamInfo(f))
-                return -1;
+            if((ec = fpd::Player::instance().getStreamInfo(f)))
+                return ec;
         }
         break;
     case 1:
         for (auto &f : fpd::Options::instance()._files)
         {
             LOG_INFO("Dump H.264/265 and acc streams for file: %s", f.c_str());
-            if (!fpd::Player::instance().dumpVideoAndAudioStream(f))
-                return -1;
+            if ((ec = fpd::Player::instance().dumpVideoAndAudioStream(f)))
+                return ec;
         }
         break;
     default:
         break;
     }
 
-    return 0;
+    return ec;
 }

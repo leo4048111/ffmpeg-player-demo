@@ -34,7 +34,7 @@ namespace fpd
         Player();
 
     public:
-        ~Player() = default;
+        ~Player();
         Player(const Player &) = delete;
         Player &operator=(const Player &) = delete;
 
@@ -45,11 +45,10 @@ namespace fpd
         }
     
     private:
-        AVFormatContext* _av_format_ctx;
 
     public:
-        bool getStreamInfo(const std::string_view &file);
+        int getStreamInfo(const std::string_view &file);
 
-        bool dumpVideoAndAudioStream(const std::string_view &file);
+        int dumpVideoAndAudioStream(const std::string_view &file);
     };
 }
