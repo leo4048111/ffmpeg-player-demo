@@ -18,9 +18,9 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
-#include <SDL2/SDL.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/intreadwrite.h>
+#include <SDL2/SDL.h>
 #ifdef __cplusplus
 };
 #endif
@@ -47,6 +47,7 @@ namespace fpd
         }
     
     private:
+        int initSDL();
     
     public:
         static std::string_view getPlayerModeName(const int mode);
