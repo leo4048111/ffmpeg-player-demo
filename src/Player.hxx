@@ -53,11 +53,11 @@ namespace fpd
 
         int getStreamInfo(const std::string_view &file);
 
-        int dumpVideoAndAudioStream(const std::string_view &file);
+        // int dumpVideoAndAudioStream(const std::string_view &file);
 
-        int lameDumpVideoAndAudioStream(const std::string_view &file);  // lame implementation, just for test
+        // int lameDumpVideoAndAudioStream(const std::string_view &file);  // lame implementation, just for test
     
-        int dumpH264AndAACFromVideoFile(const std::string_view &file); // lame implementation, only works when source streams are already encoded in aac and h264
+        int dumpH264AndAACFromVideoFile(const std::string_view &file);
     
         int dumpYUVAndPlayVideoStream(const std::string_view &file);
     };
