@@ -1,5 +1,7 @@
 #include <fstream>
 
+#include "Spinner.hxx"
+
 #include "Player.hxx"
 #include "Logger.hxx"
 #include "Utils.hxx"
@@ -628,6 +630,8 @@ namespace fpd
 
         AVPacket pkt;
 
+        auto x = std::make_unique<spinner::spinner>(41);
+        x->start();
         while (av_read_frame(formatCtx.get(), &pkt) >= 0)
         {
             if (pkt.stream_index == videoStreamidx)
@@ -645,6 +649,7 @@ namespace fpd
             av_packet_unref(&pkt);
         }
 
+        x->stop();
         LOG_INFO("Dumped video stream to file: %s", videoFilename.c_str());
         LOG_INFO("Dumped audio stream to file: %s", audioFilename.c_str());
 
@@ -720,6 +725,8 @@ namespace fpd
 
         std::ofstream videoYuvOutFile(videoYuvOutFilename, std::ios::binary);
 
+        auto x = std::make_unique<spinner::spinner>(41);
+        x->start();
         while(av_read_frame(formatCtx.get(), &pkt) >= 0)
         {
             if(pkt.stream_index == videoStreamidx)
@@ -738,6 +745,7 @@ namespace fpd
             av_packet_unref(&pkt);
         }
 
+        x->stop();
         LOG_INFO("Dumped yuv data to file: %s", videoYuvOutFilename.c_str());
 
         videoYuvOutFile.close();
