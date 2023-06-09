@@ -228,11 +228,11 @@ namespace fpd
         SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
 
         _window = SDL_CreateWindow("ffmpeg player demo",
-                                  SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                  windowWidth, windowHeight,
-                                  SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
+                                   SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                                   windowWidth, windowHeight,
+                                   SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
 
-        if(_window == nullptr)
+        if (_window == nullptr)
         {
             LOG_ERROR("Failed to create SDL window, error: %s", SDL_GetError());
             return -1;
@@ -248,6 +248,20 @@ namespace fpd
         _rect.w = windowWidth;
         _rect.h = windowHeight;
         _sdlInitialized = true;
+
+        SDL_Event e;
+        bool running = true;
+        while (running)
+        {
+            while (SDL_PollEvent(&e))
+            {
+                if (e.type == SDL_QUIT)
+                {
+                    running = false;
+                }
+            }
+        }
+
         return ec;
     }
 
@@ -276,15 +290,15 @@ namespace fpd
         _sdlInitialized = false;
     }
 
-    void Player::displayYUVFrame(const AVFrame *yuvFrame, int64_t startTime, AVRational bq, AVRational cq)
+    void Player::videoRefresh(const AVFrame *yuvFrame, int64_t startTime, AVRational bq, AVRational cq)
     {
         if (!_sdlInitialized)
             return;
 
-        SDL_UpdateYUVTexture(_texture, &_rect, 
-                                yuvFrame->data[0], yuvFrame->linesize[0],
-                                yuvFrame->data[1], yuvFrame->linesize[1],
-                                yuvFrame->data[2], yuvFrame->linesize[2]);
+        SDL_UpdateYUVTexture(_texture, &_rect,
+                             yuvFrame->data[0], yuvFrame->linesize[0],
+                             yuvFrame->data[1], yuvFrame->linesize[1],
+                             yuvFrame->data[2], yuvFrame->linesize[2]);
 
         SDL_RenderClear(_renderer);
         SDL_RenderCopy(_renderer, _texture, nullptr, &_rect);

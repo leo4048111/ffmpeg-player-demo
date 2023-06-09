@@ -51,7 +51,7 @@ namespace fpd
 
         void destroySDL();
 
-        void displayYUVFrame(const AVFrame *yuvFrame, int64_t startTime, AVRational bq, AVRational cq);
+        void videoRefresh(const AVFrame *yuvFrame, int64_t startTime, AVRational bq, AVRational cq);
 
     public:
         static std::string_view getPlayerModeName(const int mode);
