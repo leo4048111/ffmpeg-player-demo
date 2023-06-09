@@ -47,7 +47,6 @@ namespace fpd
         }
     
     private:
-        static int h264ExtradataToAnnexb(const uint8_t *codec_extradata, const int codec_extradata_size, AVPacket *out_extradata, int padding);
     
     public:
         static std::string_view getPlayerModeName(const int mode);

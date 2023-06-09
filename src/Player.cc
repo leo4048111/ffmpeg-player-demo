@@ -3,32 +3,10 @@
 #include "Player.hxx"
 #include "Logger.hxx"
 #include "Utils.hxx"
-namespace fpd
+
+namespace
 {
-    Player::Player()
-    {
-        avformat_network_init();
-    }
-
-    Player::~Player()
-    {
-        avformat_network_deinit();
-    }
-
-    std::string_view Player::getPlayerModeName(const int mode)
-    {
-        switch (mode)
-        {
-        case 0:
-            return "get stream infos";
-        case 1:
-            return "dump H.264/265 and acc streams from mp4/vls file";
-        default:
-            return "unknown mode";
-        }
-    }
-
-    int Player::h264ExtradataToAnnexb(const uint8_t *codec_extradata, const int codec_extradata_size, AVPacket *out_extradata, int padding)
+    int h264ExtradataToAnnexb(const uint8_t *codec_extradata, const int codec_extradata_size, AVPacket *out_extradata, int padding)
     {
         uint16_t unit_size = 0;
         uint64_t total_size = 0;
@@ -133,6 +111,108 @@ namespace fpd
         out_extradata->size = total_size;
 
         return 0;
+    }
+
+    int parseAdtsHeader(char *const p_adts_header, const int data_length,
+                        const int profile, const int samplerate, const int channels)
+    {
+#define ADTS_HEADER_LEN 7
+        const int sampling_frequencies[] =
+            {
+                96000, // 0x0
+                88200, // 0x1
+                64000, // 0x2
+                48000, // 0x3
+                44100, // 0x4
+                32000, // 0x5
+                24000, // 0x6
+                22050, // 0x7
+                16000, // 0x8
+                12000, // 0x9
+                11025, // 0xa
+                8000   // 0xb
+            };
+
+        int sampling_frequencies_index = 3;
+        int adtsLen = data_length + 7;
+
+        int frequencies_size = sizeof(sampling_frequencies) / sizeof(sampling_frequencies[0]);
+        int i = 0;
+        for (i = 0; i < frequencies_size; i++)
+        {
+            if (samplerate == sampling_frequencies[i])
+            {
+                sampling_frequencies_index = i;
+                break;
+            }
+        }
+        if (sampling_frequencies_index >= frequencies_size)
+        {
+            printf("unsupport samplerate:%d\n", samplerate);
+            return AVERROR(EINVAL);
+        }
+
+        p_adts_header[0] = 0xff;
+        p_adts_header[1] = 0xf0;
+
+        p_adts_header[1] |= (0 << 3);
+        p_adts_header[1] |= (0 << 1);
+        p_adts_header[1] |= 1;
+
+        p_adts_header[2] = (profile) << 6;
+
+        p_adts_header[2] |= (sampling_frequencies_index & 0x0f) << 2;
+
+        p_adts_header[2] |= (0 << 1);
+
+        p_adts_header[2] |= (channels & 0x04) >> 2;
+        p_adts_header[3] = (channels & 0x03) << 6;
+
+        p_adts_header[3] |= (0 << 5);
+
+        p_adts_header[3] |= (0 << 4);
+
+        p_adts_header[3] |= (0 << 3);
+
+        p_adts_header[3] |= (0 << 2);
+
+        p_adts_header[3] |= ((adtsLen & 0x1800) >> 11);
+        p_adts_header[4] = (uint8_t)((adtsLen & 0x7f8) >> 3);
+        p_adts_header[5] = (uint8_t)((adtsLen & 0x7) << 5);
+
+        p_adts_header[5] |= 0x1f;
+        p_adts_header[6] = 0xfc;
+
+        p_adts_header[6] &= 0xfc;
+
+        return 0;
+
+#undef ADTS_HEADER_LEN
+    }
+}
+namespace fpd
+{
+    Player::Player()
+    {
+        avformat_network_init();
+    }
+
+    Player::~Player()
+    {
+        avformat_network_deinit();
+    }
+
+    std::string_view Player::getPlayerModeName(const int mode)
+    {
+        switch (mode)
+        {
+        case 0:
+            return "get stream infos";
+        case 1:
+            return "dump H.264/265 and acc streams from mp4/vls file";
+        default:
+            return "unknown mode";
+        }
     }
 
     int Player::getStreamInfo(const std::string_view &file)
@@ -558,7 +638,9 @@ namespace fpd
             }
             else if (pkt.stream_index == audioStreamidx)
             {
-                memcpy(&pkt.data[0], h264VideoFrameHeader, sizeof(h264VideoFrameHeader));
+                char adtsHeader[7] = {0};
+                ec = parseAdtsHeader(adtsHeader, pkt.size, audioInStream->codecpar->profile, audioInStream->codecpar->sample_rate, audioInStream->codecpar->ch_layout.nb_channels);
+                audioFile.write(adtsHeader, sizeof(adtsHeader));
                 audioFile.write((const char *)pkt.data, pkt.size);
             }
             av_packet_unref(&pkt);
