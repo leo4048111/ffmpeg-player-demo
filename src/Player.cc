@@ -210,6 +210,8 @@ namespace fpd
             return "get stream infos";
         case 1:
             return "dump H.264/265 and acc streams from mp4/vls file";
+        case 2:
+            return "dump yuv data of video stream from mp4/vls file and play with SDL2";
         default:
             return "unknown mode";
         }
@@ -652,6 +654,107 @@ namespace fpd
         videoFile.close();
         audioFile.close();
 
+        avformat_free_context(avFormatCtx);
+
+        return ec;
+    }
+
+    int Player::dumpYUVAndPlayVideoStream(const std::string_view &file)
+    {
+        int ec = 0;
+        AVFormatContext *avFormatCtx = avformat_alloc_context();
+
+        if((ec = avformat_open_input(&avFormatCtx, file.data(), nullptr, nullptr)) < 0)
+        {
+            LOG_ERROR("Failed to open input file: %s", file.data());
+            return ec;
+        }
+
+        if((ec = avformat_find_stream_info(avFormatCtx, nullptr)) < 0)
+        {
+            LOG_ERROR("Failed to find stream info for input file: %s", file.data());
+            return ec;
+        }
+
+        int videoStreamidx;
+
+        ec = av_find_best_stream(avFormatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+        if(ec < 0)
+        {
+            LOG_ERROR("Failed to find best video stream for input file: %s", file.data());
+            return ec;
+        }
+        else
+            videoStreamidx = ec;
+
+        AVStream* videoInStream = avFormatCtx->streams[videoStreamidx];
+
+        const AVCodec* videoCodec = avcodec_find_decoder(videoInStream->codecpar->codec_id);
+        
+        if(videoCodec == nullptr)
+        {
+            LOG_ERROR("Failed to find decoder for video stream: %s", file.data());
+            return AVERROR_DECODER_NOT_FOUND;
+        }
+
+        AVCodecContext* videoCodecCtx = avcodec_alloc_context3(videoCodec);
+        if(videoCodecCtx == nullptr)
+        {
+            LOG_ERROR("Failed to alloc codec context for video stream: %s", file.data());
+            return AVERROR(ENOMEM);
+        }
+
+        if((ec = avcodec_parameters_to_context(videoCodecCtx, videoInStream->codecpar)) < 0)
+        {
+            LOG_ERROR("Failed to copy codec parameters to codec context for video stream: %s", file.data());
+            return ec;
+        }
+
+        if((ec = avcodec_open2(videoCodecCtx, videoCodec, nullptr)) < 0)
+        {
+            LOG_ERROR("Failed to open codec for video stream: %s", file.data());
+            return ec;
+        }
+
+        AVPacket pkt;
+        if((ec = av_new_packet(&pkt, videoCodecCtx->width * videoCodecCtx->height)))
+        {
+            LOG_ERROR("Failed to alloc packet for video stream: %s", file.data());
+            return ec;
+        }
+
+        AVFrame* yuvFrame = av_frame_alloc();
+
+        auto filenameNoExt = Utils::getFilenameNoExt(file);
+        auto videoYuvOutFilename = filenameNoExt + ".yuv";
+
+        std::ofstream videoYuvOutFile(videoYuvOutFilename, std::ios::binary);
+
+        while(av_read_frame(avFormatCtx, &pkt) >= 0)
+        {
+            if(pkt.stream_index == videoStreamidx)
+            {
+                if(avcodec_send_packet(videoCodecCtx, &pkt) == 0)
+                {
+                    while(avcodec_receive_frame(videoCodecCtx, yuvFrame) == 0)
+                    {
+                        videoYuvOutFile.write((const char*)yuvFrame->data[0], videoCodecCtx->width * videoCodecCtx->height);
+                        videoYuvOutFile.write((const char*)yuvFrame->data[1], videoCodecCtx->width * videoCodecCtx->height / 4);
+                        videoYuvOutFile.write((const char*)yuvFrame->data[2], videoCodecCtx->width * videoCodecCtx->height / 4);
+                    }
+                }
+            }
+
+            av_packet_unref(&pkt);
+        }
+
+        LOG_INFO("Dumped yuv data to file: %s", videoYuvOutFilename.c_str());
+
+        videoYuvOutFile.close();
+
+        avcodec_close(videoCodecCtx);
+        avcodec_free_context(&videoCodecCtx);
+        avformat_close_input(&avFormatCtx);
         avformat_free_context(avFormatCtx);
 
         return ec;

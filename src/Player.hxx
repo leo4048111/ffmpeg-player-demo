@@ -58,5 +58,7 @@ namespace fpd
         int lameDumpVideoAndAudioStream(const std::string_view &file);  // lame implementation, just for test
     
         int dumpH264AndAACFromVideoFile(const std::string_view &file); // lame implementation, only works when source streams are already encoded in aac and h264
+    
+        int dumpYUVAndPlayVideoStream(const std::string_view &file);
     };
 }
