@@ -501,11 +501,14 @@ namespace fpd
         // parse SPS and PPS info and write to head of the video file
         AVPacket outExtraDataPkt;
         const char h264VideoFrameHeader[] = {0x00, 0x00, 0x00, 0x01};
-        h264ExtradataToAnnexb(
+        ec = h264ExtradataToAnnexb(
             avFormatCtx->streams[videoStreamidx]->codecpar->extradata,
             avFormatCtx->streams[videoStreamidx]->codecpar->extradata_size,
             &outExtraDataPkt,
             AV_INPUT_BUFFER_PADDING_SIZE);
+
+        if(ec != 0)
+            return ec;
 
         memcpy(&outExtraDataPkt.data[0], h264VideoFrameHeader, sizeof(h264VideoFrameHeader));
         videoFile.write((const char *)outExtraDataPkt.data, outExtraDataPkt.size);
