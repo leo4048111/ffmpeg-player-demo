@@ -193,6 +193,7 @@ namespace
 #undef ADTS_HEADER_LEN
     }
 }
+
 namespace fpd
 {
     Player::Player()
