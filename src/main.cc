@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         for (auto &f : fpd::Options::instance()._files)
         {
             LOG_INFO("Dump H.264/265 and acc streams for file: %s", f.c_str());
-            if ((ec = fpd::Player::instance().lameDumpVideoAndAudioStream(f)))
+            if ((ec = fpd::Player::instance().dumpH264AndAACFromVideoFile(f)))
                 return ec;
         }
         break;

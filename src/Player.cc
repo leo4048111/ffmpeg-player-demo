@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "Player.hxx"
 #include "Logger.hxx"
 #include "Utils.hxx"
@@ -11,6 +13,112 @@ namespace fpd
     Player::~Player()
     {
         avformat_network_deinit();
+    }
+
+    int Player::h264ExtradataToAnnexb(const uint8_t *codec_extradata, const int codec_extradata_size, AVPacket *out_extradata, int padding)
+    {
+        uint16_t unit_size = 0;
+        uint64_t total_size = 0;
+        uint8_t *out = NULL;
+        uint8_t unit_nb = 0;
+        uint8_t sps_done = 0;
+        uint8_t sps_seen = 0;
+        uint8_t pps_seen = 0;
+        uint8_t sps_offset = 0;
+        uint8_t pps_offset = 0;
+
+        /**
+         * AVCC
+         * bits
+         *  8   version ( always 0x01 )
+         *  8   avc profile ( sps[0][1] )
+         *  8   avc compatibility ( sps[0][2] )
+         *  8   avc level ( sps[0][3] )
+         *  6   reserved ( all bits on )
+         *  2   NALULengthSizeMinusOne
+         *  3   reserved ( all bits on )
+         *  5   number of SPS NALUs (usually 1)
+         *
+         *  repeated once per SPS
+         *  16     SPS size
+         *
+         *  variable   SPS NALU data
+         *  8   number of PPS NALUs (usually 1)
+         *  repeated once per PPS
+         *  16    PPS size
+         *  variable PPS NALU data
+         */
+        const uint8_t *extradata = codec_extradata + 4;
+        static const uint8_t nalu_header[4] = {0, 0, 0, 1};
+
+        extradata++;
+
+        sps_offset = pps_offset = -1;
+
+        /* retrieve sps and pps unit(s) */
+        unit_nb = *extradata++ & 0x1f; /* number of sps unit(s) */
+        if (!unit_nb)
+        {
+            goto pps;
+        }
+        else
+        {
+            sps_offset = 0;
+            sps_seen = 1;
+        }
+
+        while (unit_nb--)
+        {
+            int ec;
+
+            unit_size = AV_RB16(extradata);
+            total_size += unit_size + 4;
+            if (total_size > INT_MAX - padding)
+            {
+                LOG_ERROR("Too big extradata size, corrupted stream or invalid MP4/AVCC bitstream");
+                return AVERROR(EINVAL);
+            }
+
+            if (extradata + 2 + unit_size > codec_extradata + codec_extradata_size)
+            {
+                LOG_ERROR("Packet header is not contained in global extradata, "
+                          "corrupted stream or invalid MP4/AVCC bitstream");
+                return AVERROR(EINVAL);
+            }
+
+            if ((ec = av_reallocp(&out, total_size + padding)) < 0)
+                return ec;
+
+            memcpy(out + total_size - unit_size - 4, nalu_header, 4);
+            memcpy(out + total_size - unit_size, extradata + 2, unit_size);
+            extradata += 2 + unit_size;
+        pps:
+            if (!unit_nb && !sps_done++)
+            {
+                unit_nb = *extradata++; /* number of pps unit(s) */
+                if (unit_nb)
+                {
+                    pps_offset = total_size;
+                    pps_seen = 1;
+                }
+            }
+        }
+
+        if (out)
+            memset(out + total_size, 0, padding);
+
+        if (!sps_seen)
+            LOG_WARNING("Warning: SPS NALU missing or invalid. "
+                        "The resulting stream may not play.\n");
+
+        if (!pps_seen)
+            LOG_WARNING("Warning: PPS NALU missing or invalid. "
+                        "The resulting stream may not play.\n");
+
+        out_extradata->data = out;
+        out_extradata->size = total_size;
+
+        return 0;
     }
 
     int Player::getStreamInfo(const std::string_view &file)
@@ -343,5 +451,91 @@ namespace fpd
         avformat_free_context(outFormatCtx);
 
         return 0;
+    }
+
+    int Player::dumpH264AndAACFromVideoFile(const std::string_view &file)
+    {
+        int ec = 0;
+        AVFormatContext *avFormatCtx = avformat_alloc_context();
+
+        if ((ec = avformat_open_input(&avFormatCtx, file.data(), nullptr, nullptr)) < 0)
+        {
+            LOG_ERROR("Failed to open input file: %s", file.data());
+            return ec;
+        }
+
+        if ((ec = avformat_find_stream_info(avFormatCtx, nullptr)) < 0)
+        {
+            LOG_ERROR("Failed to find stream info for input file: %s", file.data());
+            return ec;
+        }
+
+        int videoStreamidx, audioStreamidx;
+
+        ec = av_find_best_stream(avFormatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+        if (ec < 0)
+        {
+            LOG_ERROR("Failed to find best video stream for input file: %s", file.data());
+            return ec;
+        }
+        else
+            videoStreamidx = ec;
+
+        ec = av_find_best_stream(avFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+
+        if (ec < 0)
+        {
+            LOG_ERROR("Failed to find best audio stream for input file: %s", file.data());
+            return ec;
+        }
+        else
+            audioStreamidx = ec;
+
+        auto filenameNoExt = Utils::getFilenameNoExt(file);
+        auto videoFilename = filenameNoExt + ".h264";
+        auto audioFilename = filenameNoExt + ".aac";
+
+        std::ofstream videoFile(videoFilename, std::ios::binary);
+        std::ofstream audioFile(audioFilename, std::ios::binary);
+
+        // parse SPS and PPS info and write to head of the video file
+        AVPacket outExtraDataPkt;
+        const char h264VideoFrameHeader[] = {0x00, 0x00, 0x00, 0x01};
+        h264ExtradataToAnnexb(
+            avFormatCtx->streams[videoStreamidx]->codecpar->extradata,
+            avFormatCtx->streams[videoStreamidx]->codecpar->extradata_size,
+            &outExtraDataPkt,
+            AV_INPUT_BUFFER_PADDING_SIZE);
+
+        memcpy(&outExtraDataPkt.data[0], h264VideoFrameHeader, sizeof(h264VideoFrameHeader));
+        videoFile.write((const char *)outExtraDataPkt.data, outExtraDataPkt.size);
+
+        AVPacket pkt;
+
+        while (av_read_frame(avFormatCtx, &pkt) >= 0)
+        {
+            if (pkt.stream_index == videoStreamidx)
+            {
+                memcpy(&pkt.data[0], h264VideoFrameHeader, sizeof(h264VideoFrameHeader));
+                videoFile.write((const char *)pkt.data, pkt.size);
+            }
+            // else if (pkt.stream_index == audioStreamidx)
+            // {
+            //     std::ofstream audioFile(audioFilename, std::ios::binary | std::ios::app);
+            //     audioFile.write((char *)pkt.data, pkt.size);
+            //     audioFile.close();
+            // }
+            av_packet_unref(&pkt);
+        }
+
+        LOG_INFO("Dumped video stream to file: %s", videoFilename.c_str());
+        LOG_INFO("Dumped audio stream to file: %s", audioFilename.c_str());
+
+        videoFile.close();
+        audioFile.close();
+
+        avformat_free_context(avFormatCtx);
+
+        return ec;
     }
 }
