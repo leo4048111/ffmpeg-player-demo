@@ -247,6 +247,51 @@ namespace fpd
         _rect.y = 0;
         _rect.w = windowWidth;
         _rect.h = windowHeight;
+        _sdlInitialized = true;
+        return ec;
+    }
+
+    void Player::destroySDL()
+    {
+        if (_texture != nullptr)
+        {
+            SDL_DestroyTexture(_texture);
+            _texture = nullptr;
+        }
+
+        if (_renderer != nullptr)
+        {
+            SDL_DestroyRenderer(_renderer);
+            _renderer = nullptr;
+        }
+
+        if (_window != nullptr)
+        {
+            SDL_DestroyWindow(_window);
+            _window = nullptr;
+        }
+
+        SDL_Quit();
+
+        _sdlInitialized = false;
+    }
+
+    void Player::displayYUVFrame(const AVFrame *yuvFrame, int64_t startTime, AVRational bq, AVRational cq)
+    {
+        if (!_sdlInitialized)
+            return;
+
+        SDL_UpdateYUVTexture(_texture, &_rect, 
+                                yuvFrame->data[0], yuvFrame->linesize[0],
+                                yuvFrame->data[1], yuvFrame->linesize[1],
+                                yuvFrame->data[2], yuvFrame->linesize[2]);
+
+        SDL_RenderClear(_renderer);
+        SDL_RenderCopy(_renderer, _texture, nullptr, &_rect);
+        SDL_RenderPresent(_renderer);
+
+        int64_t delay = av_rescale_q(yuvFrame->pkt_dts - startTime, bq, cq);
+        SDL_Delay(delay);
     }
 
     int Player::getStreamInfo(const std::string_view &file)
@@ -747,6 +792,8 @@ namespace fpd
             return ec;
         }
 
+        initSDL(videoCodecCtx->width, videoCodecCtx->height);
+
         AVFrame *yuvFrame = av_frame_alloc();
 
         auto filenameNoExt = Utils::getFilenameNoExt(file);
@@ -767,6 +814,7 @@ namespace fpd
                         videoYuvOutFile.write((const char *)yuvFrame->data[0], videoCodecCtx->width * videoCodecCtx->height);
                         videoYuvOutFile.write((const char *)yuvFrame->data[1], videoCodecCtx->width * videoCodecCtx->height / 4);
                         videoYuvOutFile.write((const char *)yuvFrame->data[2], videoCodecCtx->width * videoCodecCtx->height / 4);
+                        displayYUVFrame(yuvFrame, videoInStream->start_time, videoInStream->time_base, AV_TIME_BASE_Q);
                     }
                 }
             }
@@ -778,6 +826,8 @@ namespace fpd
         LOG_INFO("Dumped yuv data to file: %s", videoYuvOutFilename.c_str());
 
         videoYuvOutFile.close();
+
+        destroySDL();
 
         return ec;
     }
