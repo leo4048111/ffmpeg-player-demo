@@ -136,10 +136,8 @@ namespace spinner
             {
                 active_ = false;
                 thr_.join();
-                cout << "\e[?25h";
-                if (finalmsg_.size() > 0)
-                    cout << " - " << finalmsg_ << endl;
                 cout.flush();
+                cout << endl;
             }
         }
 
