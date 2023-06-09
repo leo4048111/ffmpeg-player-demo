@@ -230,7 +230,7 @@ namespace fpd
         _window = SDL_CreateWindow("ffmpeg player demo",
                                   SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                   windowWidth, windowHeight,
-                                  SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+                                  SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
 
         if(_window == nullptr)
         {
