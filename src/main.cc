@@ -47,13 +47,17 @@ int main(int argc, char **argv)
 
     int ec = 0;
 
+    fpd::Player& player = fpd::Player::instance();
+
+    LOG_INFO("Player task: %s", player.getPlayerModeName(fpd::Options::instance()._mode).data());
+
     switch (fpd::Options::instance()._mode)
     {
     case 0: // get stream infos
         for (auto &f : fpd::Options::instance()._files)
         {
             LOG_INFO("Get stream infos for file: %s", f.c_str());
-            if((ec = fpd::Player::instance().getStreamInfo(f)))
+            if((ec = player.getStreamInfo(f)))
                 return ec;
         }
         break;
@@ -61,7 +65,7 @@ int main(int argc, char **argv)
         for (auto &f : fpd::Options::instance()._files)
         {
             LOG_INFO("Dump H.264/265 and acc streams for file: %s", f.c_str());
-            if ((ec = fpd::Player::instance().dumpH264AndAACFromVideoFile(f)))
+            if ((ec = player.dumpH264AndAACFromVideoFile(f)))
                 return ec;
         }
         break;

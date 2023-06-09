@@ -15,6 +15,19 @@ namespace fpd
         avformat_network_deinit();
     }
 
+    std::string_view Player::getPlayerModeName(const int mode)
+    {
+        switch (mode)
+        {
+        case 0:
+            return "get stream infos";
+        case 1:
+            return "dump H.264/265 and acc streams from mp4/vls file";
+        default:
+            return "unknown mode";
+        }
+    }
+
     int Player::h264ExtradataToAnnexb(const uint8_t *codec_extradata, const int codec_extradata_size, AVPacket *out_extradata, int padding)
     {
         uint16_t unit_size = 0;
@@ -92,6 +105,7 @@ namespace fpd
             memcpy(out + total_size - unit_size - 4, nalu_header, 4);
             memcpy(out + total_size - unit_size, extradata + 2, unit_size);
             extradata += 2 + unit_size;
+
         pps:
             if (!unit_nb && !sps_done++)
             {
@@ -108,11 +122,11 @@ namespace fpd
             memset(out + total_size, 0, padding);
 
         if (!sps_seen)
-            LOG_WARNING("Warning: SPS NALU missing or invalid. "
+            LOG_WARNING("SPS NALU missing or invalid. "
                         "The resulting stream may not play.\n");
 
         if (!pps_seen)
-            LOG_WARNING("Warning: PPS NALU missing or invalid. "
+            LOG_WARNING("PPS NALU missing or invalid. "
                         "The resulting stream may not play.\n");
 
         out_extradata->data = out;
@@ -491,6 +505,26 @@ namespace fpd
         else
             audioStreamidx = ec;
 
+        AVStream *videoInStream = avFormatCtx->streams[videoStreamidx];
+        AVStream *audioInStream = avFormatCtx->streams[audioStreamidx];
+
+        // check stream encoding
+        if (videoInStream->codecpar->codec_id != AV_CODEC_ID_H264) // video stream only support h264
+        {
+            LOG_ERROR("Expect video stream encoding to be %s, got %s",
+                      avcodec_get_name(AV_CODEC_ID_H264),
+                      avcodec_get_name(videoInStream->codecpar->codec_id));
+            return AVERROR(EINVAL);
+        }
+
+        if (audioInStream->codecpar->codec_id != AV_CODEC_ID_AAC) // audio stream only support aac
+        {
+            LOG_ERROR("Expect audio stream encoding to be %s, got %s",
+                      avcodec_get_name(AV_CODEC_ID_AAC),
+                      avcodec_get_name(audioInStream->codecpar->codec_id));
+            return AVERROR(EINVAL);
+        }
+
         auto filenameNoExt = Utils::getFilenameNoExt(file);
         auto videoFilename = filenameNoExt + ".h264";
         auto audioFilename = filenameNoExt + ".aac";
@@ -502,12 +536,12 @@ namespace fpd
         AVPacket outExtraDataPkt;
         const char h264VideoFrameHeader[] = {0x00, 0x00, 0x00, 0x01};
         ec = h264ExtradataToAnnexb(
-            avFormatCtx->streams[videoStreamidx]->codecpar->extradata,
-            avFormatCtx->streams[videoStreamidx]->codecpar->extradata_size,
+            videoInStream->codecpar->extradata,
+            videoInStream->codecpar->extradata_size,
             &outExtraDataPkt,
             AV_INPUT_BUFFER_PADDING_SIZE);
 
-        if(ec != 0)
+        if (ec != 0)
             return ec;
 
         memcpy(&outExtraDataPkt.data[0], h264VideoFrameHeader, sizeof(h264VideoFrameHeader));
@@ -522,12 +556,11 @@ namespace fpd
                 memcpy(&pkt.data[0], h264VideoFrameHeader, sizeof(h264VideoFrameHeader));
                 videoFile.write((const char *)pkt.data, pkt.size);
             }
-            // else if (pkt.stream_index == audioStreamidx)
-            // {
-            //     std::ofstream audioFile(audioFilename, std::ios::binary | std::ios::app);
-            //     audioFile.write((char *)pkt.data, pkt.size);
-            //     audioFile.close();
-            // }
+            else if (pkt.stream_index == audioStreamidx)
+            {
+                memcpy(&pkt.data[0], h264VideoFrameHeader, sizeof(h264VideoFrameHeader));
+                audioFile.write((const char *)pkt.data, pkt.size);
+            }
             av_packet_unref(&pkt);
         }
 
