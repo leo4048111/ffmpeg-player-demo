@@ -35,16 +35,16 @@ namespace fpd
             switch (level)
             {
             case INFO:
-                std::cout << "[INFO] " << message << std::endl;
+                std::cout << "\033[32m[INFO]\033[0m " << message << std::endl;
                 break;
             case WARNING:
-                std::cout << "[WARNING] " << message << std::endl;
+                std::cout << "\033[33m[WARNING]\033[0m " << message << std::endl;
                 break;
             case ERROR:
-                std::cerr << "[ERROR] " << message << std::endl;
+                std::cerr << "\033[31m[ERROR]\033[0m " << message << std::endl;
                 break;
             default:
-                std::cerr << "[UNKNOWN] " << message << std::endl;
+                std::cerr << "\033[30m[UNKNOWN]\033[0m " << message << std::endl;
             }
         }
 
