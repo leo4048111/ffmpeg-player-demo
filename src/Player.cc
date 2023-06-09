@@ -221,6 +221,34 @@ namespace fpd
         }
     }
 
+    int Player::initSDL(const int windowWidth, const int windowHeight)
+    {
+        int ec = 0;
+
+        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
+
+        _window = SDL_CreateWindow("Simplest ffmpeg player's Window",
+                                  SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                                  windowWidth, windowHeight,
+                                  SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+
+        if(_window == nullptr)
+        {
+            LOG_ERROR("Failed to create SDL window, error: %s", SDL_GetError());
+            return -1;
+        }
+
+        _renderer = SDL_CreateRenderer(_window, -1, 0);
+        _texture = SDL_CreateTexture(_renderer,
+                                     SDL_PIXELFORMAT_IYUV,
+                                     SDL_TEXTUREACCESS_STREAMING,
+                                     windowWidth, windowHeight);
+        _rect.x = 0;
+        _rect.y = 0;
+        _rect.w = windowWidth;
+        _rect.h = windowHeight;
+    }
+
     int Player::getStreamInfo(const std::string_view &file)
     {
         int ec = 0;
@@ -665,13 +693,13 @@ namespace fpd
         int ec = 0;
         FormatContext formatCtx;
 
-        if((ec = formatCtx.openInput(file, nullptr, nullptr)) < 0)
+        if ((ec = formatCtx.openInput(file, nullptr, nullptr)) < 0)
         {
             LOG_ERROR("Failed to open input file: %s", file.data());
             return ec;
         }
 
-        if((ec = avformat_find_stream_info(formatCtx.get(), nullptr)) < 0)
+        if ((ec = avformat_find_stream_info(formatCtx.get(), nullptr)) < 0)
         {
             LOG_ERROR("Failed to find stream info for input file: %s", file.data());
             return ec;
@@ -680,7 +708,7 @@ namespace fpd
         int videoStreamidx;
 
         ec = av_find_best_stream(formatCtx.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
-        if(ec < 0)
+        if (ec < 0)
         {
             LOG_ERROR("Failed to find best video stream for input file: %s", file.data());
             return ec;
@@ -688,11 +716,11 @@ namespace fpd
         else
             videoStreamidx = ec;
 
-        AVStream* videoInStream = formatCtx->streams[videoStreamidx];
+        AVStream *videoInStream = formatCtx->streams[videoStreamidx];
 
-        const AVCodec* videoCodec = avcodec_find_decoder(videoInStream->codecpar->codec_id);
-        
-        if(videoCodec == nullptr)
+        const AVCodec *videoCodec = avcodec_find_decoder(videoInStream->codecpar->codec_id);
+
+        if (videoCodec == nullptr)
         {
             LOG_ERROR("Failed to find decoder for video stream: %s", file.data());
             return AVERROR_DECODER_NOT_FOUND;
@@ -700,26 +728,26 @@ namespace fpd
 
         CodecContext videoCodecCtx(videoCodec);
 
-        if((ec = avcodec_parameters_to_context(videoCodecCtx.get(), videoInStream->codecpar)) < 0)
+        if ((ec = avcodec_parameters_to_context(videoCodecCtx.get(), videoInStream->codecpar)) < 0)
         {
             LOG_ERROR("Failed to copy codec parameters to codec context for video stream: %s", file.data());
             return ec;
         }
 
-        if((ec = avcodec_open2(videoCodecCtx.get(), videoCodec, nullptr)) < 0)
+        if ((ec = avcodec_open2(videoCodecCtx.get(), videoCodec, nullptr)) < 0)
         {
             LOG_ERROR("Failed to open codec for video stream: %s", file.data());
             return ec;
         }
 
         AVPacket pkt;
-        if((ec = av_new_packet(&pkt, videoCodecCtx->width * videoCodecCtx->height)))
+        if ((ec = av_new_packet(&pkt, videoCodecCtx->width * videoCodecCtx->height)))
         {
             LOG_ERROR("Failed to alloc packet for video stream: %s", file.data());
             return ec;
         }
 
-        AVFrame* yuvFrame = av_frame_alloc();
+        AVFrame *yuvFrame = av_frame_alloc();
 
         auto filenameNoExt = Utils::getFilenameNoExt(file);
         auto videoYuvOutFilename = filenameNoExt + ".yuv";
@@ -728,17 +756,17 @@ namespace fpd
 
         auto x = std::make_unique<spinner::spinner>(41);
         x->start();
-        while(av_read_frame(formatCtx.get(), &pkt) >= 0)
+        while (av_read_frame(formatCtx.get(), &pkt) >= 0)
         {
-            if(pkt.stream_index == videoStreamidx)
+            if (pkt.stream_index == videoStreamidx)
             {
-                if(avcodec_send_packet(videoCodecCtx.get(), &pkt) == 0)
+                if (avcodec_send_packet(videoCodecCtx.get(), &pkt) == 0)
                 {
-                    while(avcodec_receive_frame(videoCodecCtx.get(), yuvFrame) == 0)
+                    while (avcodec_receive_frame(videoCodecCtx.get(), yuvFrame) == 0)
                     {
-                        videoYuvOutFile.write((const char*)yuvFrame->data[0], videoCodecCtx->width * videoCodecCtx->height);
-                        videoYuvOutFile.write((const char*)yuvFrame->data[1], videoCodecCtx->width * videoCodecCtx->height / 4);
-                        videoYuvOutFile.write((const char*)yuvFrame->data[2], videoCodecCtx->width * videoCodecCtx->height / 4);
+                        videoYuvOutFile.write((const char *)yuvFrame->data[0], videoCodecCtx->width * videoCodecCtx->height);
+                        videoYuvOutFile.write((const char *)yuvFrame->data[1], videoCodecCtx->width * videoCodecCtx->height / 4);
+                        videoYuvOutFile.write((const char *)yuvFrame->data[2], videoCodecCtx->width * videoCodecCtx->height / 4);
                     }
                 }
             }
