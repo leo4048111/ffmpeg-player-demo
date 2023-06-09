@@ -47,7 +47,7 @@ namespace fpd
         }
     
     private:
-        int initSDL();
+        int initSDL(const int windowWidth, const int windowHeight);
     
     public:
         static std::string_view getPlayerModeName(const int mode);
@@ -61,5 +61,11 @@ namespace fpd
         int dumpH264AndAACFromVideoFile(const std::string_view &file);
     
         int dumpYUVAndPlayVideoStream(const std::string_view &file);
+
+    private:
+        SDL_Window* _window{nullptr};
+        SDL_Renderer* _renderer{nullptr};
+        SDL_Texture* _texture{nullptr};
+        SDL_Rect _rect;
     };
 }
