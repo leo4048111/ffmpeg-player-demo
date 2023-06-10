@@ -40,6 +40,8 @@
 #include "Player.hxx"
 #include "Logger.hxx"
 
+#undef main
+
 int main(int argc, char **argv)
 {
     if (!fpd::Options::instance().parse(argc, argv))

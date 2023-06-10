@@ -2,11 +2,13 @@ cmake_minimum_required(VERSION 3.17)
 
 project(ffmpeg_player_demo)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS "-mconsole ${CMAKE_CXX_FLAGS}")
 
-set(FFMPEG_DIR /usr/local/Cellar/ffmpeg/6.0)
-set(SDL_DIR /usr/local/Cellar/sdl2/2.26.5)
+set(FFMPEG_DIR /usr/local/Cellar/ffmpeg/6.0 CACHE PATH "ffmpeg dir")
+set(SDL_DIR /usr/local/Cellar/sdl2/2.26.5 CACHE PATH "sdl dir")
+
 
 include_directories(
     third_party/
