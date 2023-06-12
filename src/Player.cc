@@ -6,6 +6,7 @@
 #include "Logger.hxx"
 #include "Utils.hxx"
 #include "FFWrapper.hxx"
+#include "Decoder.hxx"
 
 namespace
 {
@@ -750,6 +751,10 @@ namespace fpd
     int Player::dumpYUVAndPlayVideoStream(const std::string_view &file)
     {
         int ec = 0;
+        Decoder decoder(Decoder::INIT_VIDEO, file);
+        decoder.start([](const AVMediaType type, AVFrame *frame)
+                      { LOG_INFO("In decoder"); });
+
         FormatContext formatCtx;
 
         if ((ec = formatCtx.openInput(file, nullptr, nullptr)) < 0)
@@ -828,7 +833,6 @@ namespace fpd
                         videoYuvOutFile.write((const char *)yuvFrame->data[0], videoCodecCtx->width * videoCodecCtx->height);
                         videoYuvOutFile.write((const char *)yuvFrame->data[1], videoCodecCtx->width * videoCodecCtx->height / 4);
                         videoYuvOutFile.write((const char *)yuvFrame->data[2], videoCodecCtx->width * videoCodecCtx->height / 4);
-                        // displayYUVFrame(yuvFrame, videoInStream->start_time, videoInStream->time_base, AV_TIME_BASE_Q);
                     }
                 }
             }
