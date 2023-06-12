@@ -43,7 +43,6 @@ namespace fpd
 
         using DecoderCallback = void (*)(const AVMediaType type,  AVFrame *frame);
 
-
         Decoder(int flag, const std::string_view &file);
         ~Decoder();
 
