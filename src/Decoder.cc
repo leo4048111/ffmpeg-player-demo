@@ -1,7 +1,7 @@
 #include "Decoder.hxx"
 #include "Logger.hxx"
 
-#include <thread>
+#include "Spinner.hxx"
 
 namespace fpd
 {
@@ -16,7 +16,7 @@ namespace fpd
         avformat_close_input(&_avFormatCtx);
     }
 
-    int Decoder::start(DecoderCallback callback)
+    int Decoder::start(DecoderCallback onDecodedFrame, DecoderCallback onDecoderExit)
     {
         int ec = 0;
 
@@ -76,12 +76,33 @@ namespace fpd
         auto x = [=]()
         {
             AVPacket pkt;
-            LOG_INFO("In decode thread...");
-            callback(AVMEDIA_TYPE_UNKNOWN, nullptr);
+            auto x = std::make_unique<spinner::spinner>(41);
+            x->start();
+
+            while (av_read_frame(_avFormatCtx, &pkt) >= 0)
+            {
+                if(_streamDecoderMap.find(pkt.stream_index) != _streamDecoderMap.end())
+                {
+                    // has valid codec
+                    AVFrame *frame = av_frame_alloc();
+                    if(avcodec_send_packet(_streamDecoderMap[pkt.stream_index]->get(), &pkt) > 0)
+                    {
+                        while(avcodec_receive_frame(_streamDecoderMap[pkt.stream_index]->get(), frame) >= 0)
+                        {
+                            onDecodedFrame(_avFormatCtx->streams[pkt.stream_index]->codecpar->codec_type, frame);
+                        }
+                    }
+
+                    av_packet_unref(&pkt);
+                }
+            }
+
+            x->stop();
+            onDecoderExit(AVMEDIA_TYPE_UNKNOWN, nullptr);
         };
 
-        std::thread t(x);
-        t.detach();
+        _t = std::thread(x);
+        _t.detach();
 
         return ec;
     }

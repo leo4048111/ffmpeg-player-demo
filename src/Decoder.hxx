@@ -1,3 +1,5 @@
+#pragma once
+
 #ifdef _WIN32
 // Windows
 extern "C"
@@ -30,6 +32,8 @@ extern "C"
 #include <unordered_map>
 #include <stdexcept>
 #include <memory>
+#include <thread>
+#include <functional>
 
 #include "FFWrapper.hxx"
 
@@ -41,16 +45,17 @@ namespace fpd
         static const int INIT_VIDEO = 0x01;
         static const int INIT_AUDIO = 0x02;
 
-        using DecoderCallback = void (*)(const AVMediaType type,  AVFrame *frame);
+        using DecoderCallback = std::function<void(const AVMediaType type, AVFrame *frame)>;
 
         Decoder(int flag, const std::string_view &file);
         ~Decoder();
 
-        int start(DecoderCallback callback);
+        int start(DecoderCallback onDecodedFrame, DecoderCallback onDecoderExit);
 
     private:
         AVFormatContext *_avFormatCtx{nullptr};
         int _flag{0};
         std::unordered_map<int, std::unique_ptr<CodecContext>> _streamDecoderMap;
+        std::thread _t;
     };
 }
