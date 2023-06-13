@@ -1,6 +1,6 @@
 #include <fstream>
-
-#include "Spinner.hxx"
+#include <mutex>
+#include <functional>
 
 #include "Player.hxx"
 #include "Logger.hxx"
@@ -719,8 +719,8 @@ namespace fpd
 
         AVPacket pkt;
 
-        auto x = std::make_unique<spinner::spinner>(41);
-        x->start();
+        // auto x = std::make_unique<spinner::spinner>(41);
+        // x->start();
         while (av_read_frame(formatCtx.get(), &pkt) >= 0)
         {
             if (pkt.stream_index == videoStreamidx)
@@ -738,7 +738,7 @@ namespace fpd
             av_packet_unref(&pkt);
         }
 
-        x->stop();
+        // x->stop();
         LOG_INFO("Dumped video stream to file: %s", videoFilename.c_str());
         LOG_INFO("Dumped audio stream to file: %s", audioFilename.c_str());
 
@@ -751,67 +751,64 @@ namespace fpd
     int Player::dumpYUVAndPlayVideoStream(const std::string_view &file)
     {
         int ec = 0;
-        Decoder decoder(Decoder::INIT_VIDEO, file);
-        decoder.start([](const AVMediaType type, AVFrame *frame)
-                      { LOG_INFO("In decoder"); });
 
-        FormatContext formatCtx;
+        // FormatContext formatCtx;
 
-        if ((ec = formatCtx.openInput(file, nullptr, nullptr)) < 0)
-        {
-            LOG_ERROR("Failed to open input file: %s", file.data());
-            return ec;
-        }
+        // if ((ec = formatCtx.openInput(file, nullptr, nullptr)) < 0)
+        // {
+        //     LOG_ERROR("Failed to open input file: %s", file.data());
+        //     return ec;
+        // }
 
-        if ((ec = avformat_find_stream_info(formatCtx.get(), nullptr)) < 0)
-        {
-            LOG_ERROR("Failed to find stream info for input file: %s", file.data());
-            return ec;
-        }
+        // if ((ec = avformat_find_stream_info(formatCtx.get(), nullptr)) < 0)
+        // {
+        //     LOG_ERROR("Failed to find stream info for input file: %s", file.data());
+        //     return ec;
+        // }
 
-        int videoStreamidx;
+        // int videoStreamidx;
 
-        ec = av_find_best_stream(formatCtx.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
-        if (ec < 0)
-        {
-            LOG_ERROR("Failed to find best video stream for input file: %s", file.data());
-            return ec;
-        }
-        else
-            videoStreamidx = ec;
+        // ec = av_find_best_stream(formatCtx.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+        // if (ec < 0)
+        // {
+        //     LOG_ERROR("Failed to find best video stream for input file: %s", file.data());
+        //     return ec;
+        // }
+        // else
+        //     videoStreamidx = ec;
 
-        AVStream *videoInStream = formatCtx->streams[videoStreamidx];
+        // AVStream *videoInStream = formatCtx->streams[videoStreamidx];
 
-        const AVCodec *videoCodec = avcodec_find_decoder(videoInStream->codecpar->codec_id);
+        // const AVCodec *videoCodec = avcodec_find_decoder(videoInStream->codecpar->codec_id);
 
-        if (videoCodec == nullptr)
-        {
-            LOG_ERROR("Failed to find decoder for video stream: %s", file.data());
-            return AVERROR_DECODER_NOT_FOUND;
-        }
+        // if (videoCodec == nullptr)
+        // {
+        //     LOG_ERROR("Failed to find decoder for video stream: %s", file.data());
+        //     return AVERROR_DECODER_NOT_FOUND;
+        // }
 
-        CodecContext videoCodecCtx(videoCodec);
+        // CodecContext videoCodecCtx(videoCodec);
 
-        if ((ec = avcodec_parameters_to_context(videoCodecCtx.get(), videoInStream->codecpar)) < 0)
-        {
-            LOG_ERROR("Failed to copy codec parameters to codec context for video stream: %s", file.data());
-            return ec;
-        }
+        // if ((ec = avcodec_parameters_to_context(videoCodecCtx.get(), videoInStream->codecpar)) < 0)
+        // {
+        //     LOG_ERROR("Failed to copy codec parameters to codec context for video stream: %s", file.data());
+        //     return ec;
+        // }
 
-        if ((ec = avcodec_open2(videoCodecCtx.get(), videoCodec, nullptr)) < 0)
-        {
-            LOG_ERROR("Failed to open codec for video stream: %s", file.data());
-            return ec;
-        }
+        // if ((ec = avcodec_open2(videoCodecCtx.get(), videoCodec, nullptr)) < 0)
+        // {
+        //     LOG_ERROR("Failed to open codec for video stream: %s", file.data());
+        //     return ec;
+        // }
 
-        AVPacket pkt;
-        if ((ec = av_new_packet(&pkt, videoCodecCtx->width * videoCodecCtx->height)))
-        {
-            LOG_ERROR("Failed to alloc packet for video stream: %s", file.data());
-            return ec;
-        }
+        // AVPacket pkt;
+        // if ((ec = av_new_packet(&pkt, videoCodecCtx->width * videoCodecCtx->height)))
+        // {
+        //     LOG_ERROR("Failed to alloc packet for video stream: %s", file.data());
+        //     return ec;
+        // }
 
-        initSDL(videoCodecCtx->width, videoCodecCtx->height);
+        // initSDL(videoCodecCtx->width, videoCodecCtx->height);
 
         AVFrame *yuvFrame = av_frame_alloc();
 
@@ -820,32 +817,36 @@ namespace fpd
 
         std::ofstream videoYuvOutFile(videoYuvOutFilename, std::ios::binary);
 
-        auto x = std::make_unique<spinner::spinner>(41);
-        x->start();
-        while (av_read_frame(formatCtx.get(), &pkt) >= 0)
+        std::mutex x;
+
+        Decoder decoder(Decoder::INIT_VIDEO, file);
+
+        std::function<void(const AVMediaType type, AVFrame *frame)> onDecodedFrame = [&](const AVMediaType type, AVFrame *frame)
         {
-            if (pkt.stream_index == videoStreamidx)
+            if (type == AVMEDIA_TYPE_VIDEO)
             {
-                if (avcodec_send_packet(videoCodecCtx.get(), &pkt) == 0)
-                {
-                    while (avcodec_receive_frame(videoCodecCtx.get(), yuvFrame) == 0)
-                    {
-                        videoYuvOutFile.write((const char *)yuvFrame->data[0], videoCodecCtx->width * videoCodecCtx->height);
-                        videoYuvOutFile.write((const char *)yuvFrame->data[1], videoCodecCtx->width * videoCodecCtx->height / 4);
-                        videoYuvOutFile.write((const char *)yuvFrame->data[2], videoCodecCtx->width * videoCodecCtx->height / 4);
-                    }
-                }
+                std::lock_guard<std::mutex> lock(x);
+                videoYuvOutFile.write((const char *)frame->data[0], frame->linesize[0] * frame->height);
+                videoYuvOutFile.write((const char *)frame->data[1], frame->linesize[1] * frame->height / 2);
+                videoYuvOutFile.write((const char *)frame->data[2], frame->linesize[2] * frame->height / 2);
             }
+        };
 
-            av_packet_unref(&pkt);
-        }
+        bool shouldExit = false;
 
-        x->stop();
-        LOG_INFO("Dumped yuv data to file: %s", videoYuvOutFilename.c_str());
+        std::function<void(const AVMediaType type, AVFrame *frame)> onDecoderExit = [&](const AVMediaType type, AVFrame *frame)
+        {
+            LOG_INFO("Dumped yuv data to file: %s", videoYuvOutFilename.c_str());
 
-        videoYuvOutFile.close();
+            videoYuvOutFile.close();
 
-        destroySDL();
+            shouldExit = true;
+        };
+
+        decoder.start(onDecodedFrame, onDecoderExit);
+
+        while (!shouldExit)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
         return ec;
     }
