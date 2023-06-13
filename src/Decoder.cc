@@ -84,17 +84,18 @@ namespace fpd
                 if(_streamDecoderMap.find(pkt.stream_index) != _streamDecoderMap.end())
                 {
                     // has valid codec
-                    AVFrame *frame = av_frame_alloc();
-                    if(avcodec_send_packet(_streamDecoderMap[pkt.stream_index]->get(), &pkt) > 0)
+                    AVFrame* frame = av_frame_alloc();
+                    AVCodecContext* codecCtx = _streamDecoderMap[pkt.stream_index]->get();
+                    if(avcodec_send_packet(codecCtx, &pkt) == 0)
                     {
-                        while(avcodec_receive_frame(_streamDecoderMap[pkt.stream_index]->get(), frame) >= 0)
+                        while(avcodec_receive_frame(codecCtx, frame) == 0)
                         {
                             onDecodedFrame(_avFormatCtx->streams[pkt.stream_index]->codecpar->codec_type, frame);
                         }
                     }
-
-                    av_packet_unref(&pkt);
                 }
+
+                av_packet_unref(&pkt);
             }
 
             x->stop();
