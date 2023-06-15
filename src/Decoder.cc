@@ -56,8 +56,8 @@ namespace fpd
             }
             else
             {
-                _streamInfoMap.insert(std::make_pair(streamIdx, std::make_unique<StreamInfo>(stream->codecpar->codec_type, codec)));
-                _streamDecoderMap.insert(std::make_pair(streamIdx, std::make_unique<CodecContext>(codec)));
+                _streamInfoMap[streamIdx] = std::make_unique<StreamInfo>(stream->codecpar->codec_type, codec);
+                _streamDecoderMap[streamIdx] = std::make_unique<CodecContext>(codec);
                 if ((ec = avcodec_parameters_to_context(_streamDecoderMap[streamIdx]->get(), stream->codecpar)) < 0)
                 {
                     LOG_ERROR("Failed to copy decoder parameters to input decoder context for stream %d, type %s", streamIdx, av_get_media_type_string(stream->codecpar->codec_type));

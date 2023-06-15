@@ -780,7 +780,8 @@ namespace fpd
                 videoYuvOutFile.write((const char *)frame->data[0], frame->linesize[0] * frame->height);
                 videoYuvOutFile.write((const char *)frame->data[1], frame->linesize[1] * frame->height / 2);
                 videoYuvOutFile.write((const char *)frame->data[2], frame->linesize[2] * frame->height / 2);
-            }
+            } else
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
         return ec;
