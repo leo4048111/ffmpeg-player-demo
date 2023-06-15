@@ -775,12 +775,16 @@ namespace fpd
         while (!shouldExit)
         {
             Frame frame;
-            if(decoder.receive(AVMEDIA_TYPE_VIDEO, frame))
+
+            if (decoder.receive(AVMEDIA_TYPE_VIDEO, frame))
             {
                 videoYuvOutFile.write((const char *)frame->data[0], frame->linesize[0] * frame->height);
                 videoYuvOutFile.write((const char *)frame->data[1], frame->linesize[1] * frame->height / 2);
                 videoYuvOutFile.write((const char *)frame->data[2], frame->linesize[2] * frame->height / 2);
-            } else
+            }
+            else if (shouldExit)
+                break;
+            else
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
