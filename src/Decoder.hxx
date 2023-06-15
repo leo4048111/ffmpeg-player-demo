@@ -50,7 +50,7 @@ namespace fpd
         Decoder(int flag, const std::string_view &file);
         ~Decoder();
 
-        int start(DecoderCallback onDecodedFrame, DecoderCallback onDecoderExit);
+        int start(DecoderCallback onReceiveFrame, DecoderCallback onDecoderExit);
 
     private:
         AVFormatContext *_avFormatCtx{nullptr};

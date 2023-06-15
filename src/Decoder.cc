@@ -16,7 +16,7 @@ namespace fpd
         avformat_close_input(&_avFormatCtx);
     }
 
-    int Decoder::start(DecoderCallback onDecodedFrame, DecoderCallback onDecoderExit)
+    int Decoder::start(DecoderCallback onReceiveFrame, DecoderCallback onDecoderExit)
     {
         int ec = 0;
 
@@ -91,7 +91,7 @@ namespace fpd
                     {
                         while(avcodec_receive_frame(codecCtx, frame) == 0)
                         {
-                            onDecodedFrame(avStream->codecpar->codec_type, frame);
+                            onReceiveFrame(avStream->codecpar->codec_type, frame);
                         }
                     }
 

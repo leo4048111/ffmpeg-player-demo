@@ -5,10 +5,14 @@
 #include <mutex>
 #include <memory>
 
+#include "Singleton.hxx"
+
 namespace fpd
 {
     class Logger
     {
+        SINGLETON(Logger)
+
     public:
         enum class LogLevel
         {
@@ -16,19 +20,6 @@ namespace fpd
             FPD_LOG_WARNING,
             FPD_LOG_ERROR
         };
-
-        static Logger &instance()
-        {
-            static Logger instance;
-            return instance;
-        }
-
-        ~Logger() = default;
-        Logger(Logger const &) = delete;
-        void operator=(Logger const &) = delete;
-
-    private:
-        Logger() = default;
 
     public:
         void log(LogLevel level, const std::string_view &message)
@@ -74,18 +65,18 @@ namespace fpd
     };
 }
 
-#define LOG_INFO(fmt, ...)                                                                                       \
-    do                                                                                                           \
-    {                                                                                                            \
+#define LOG_INFO(fmt, ...)                                                                                         \
+    do                                                                                                             \
+    {                                                                                                              \
         fpd::Logger::instance().log(fpd::Logger::LogLevel::FPD_LOG_INFO, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
     } while (0)
-#define LOG_WARNING(fmt, ...)                                                                                       \
-    do                                                                                                              \
-    {                                                                                                               \
+#define LOG_WARNING(fmt, ...)                                                                                         \
+    do                                                                                                                \
+    {                                                                                                                 \
         fpd::Logger::instance().log(fpd::Logger::LogLevel::FPD_LOG_WARNING, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
     } while (0)
-#define LOG_ERROR(fmt, ...)                                                                                       \
-    do                                                                                                            \
-    {                                                                                                             \
+#define LOG_ERROR(fmt, ...)                                                                                         \
+    do                                                                                                              \
+    {                                                                                                               \
         fpd::Logger::instance().log(fpd::Logger::LogLevel::FPD_LOG_ERROR, fpd::Logger::format(fmt, ##__VA_ARGS__)); \
     } while (0)

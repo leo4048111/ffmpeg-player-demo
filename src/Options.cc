@@ -6,6 +6,9 @@
 
 namespace fpd
 {
+    Options::Options() = default;
+    Options::~Options() = default;
+
     bool Options::parse(int argc, char **argv)
     {
         po::parser parser;

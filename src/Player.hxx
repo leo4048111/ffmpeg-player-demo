@@ -30,30 +30,13 @@ extern "C"
 
 #include <string_view>
 
+#include "Singleton.hxx"
+
 namespace fpd
 {
     class Player
     {
-    private:
-        Player();
-
-    public:
-        ~Player();
-        Player(const Player &) = delete;
-        Player &operator=(const Player &) = delete;
-
-        static Player &instance()
-        {
-            static Player instance;
-            return instance;
-        }
-
-    private:
-        int initSDL(const int windowWidth, const int windowHeight);
-
-        void destroySDL();
-
-        void videoRefresh(const AVFrame *yuvFrame, int64_t startTime, AVRational bq, AVRational cq);
+        SINGLETON(Player)
 
     public:
         static std::string_view getPlayerModeName(const int mode);
@@ -69,10 +52,5 @@ namespace fpd
         int dumpYUVAndPlayVideoStream(const std::string_view &file);
 
     private:
-        bool _sdlInitialized{false};
-        SDL_Window *_window{nullptr};
-        SDL_Renderer *_renderer{nullptr};
-        SDL_Texture *_texture{nullptr};
-        SDL_Rect _rect;
     };
 }

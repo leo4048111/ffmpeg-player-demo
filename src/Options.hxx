@@ -3,23 +3,13 @@
 #include <vector>
 #include <string>
 
+#include "Singleton.hxx"
+
 namespace fpd
 {
     class Options
     {
-    private:
-        Options() = default;
-
-    public:
-        ~Options() = default;
-        Options(const Options &) = delete;
-        Options &operator=(const Options &) = delete;
-
-        static Options &instance()
-        {
-            static Options instance;
-            return instance;
-        }
+        SINGLETON(Options)
 
         bool parse(int argc, char **argv);
 

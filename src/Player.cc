@@ -222,93 +222,6 @@ namespace fpd
         }
     }
 
-    int Player::initSDL(const int windowWidth, const int windowHeight)
-    {
-        int ec = 0;
-
-        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
-
-        _window = SDL_CreateWindow("ffmpeg player demo",
-                                   SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                   windowWidth, windowHeight,
-                                   SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
-
-        if (_window == nullptr)
-        {
-            LOG_ERROR("Failed to create SDL window, error: %s", SDL_GetError());
-            return -1;
-        }
-
-        _renderer = SDL_CreateRenderer(_window, -1, 0);
-        _texture = SDL_CreateTexture(_renderer,
-                                     SDL_PIXELFORMAT_IYUV,
-                                     SDL_TEXTUREACCESS_STREAMING,
-                                     windowWidth, windowHeight);
-        _rect.x = 0;
-        _rect.y = 0;
-        _rect.w = windowWidth;
-        _rect.h = windowHeight;
-        _sdlInitialized = true;
-
-        SDL_Event e;
-        bool running = true;
-        while (running)
-        {
-            while (SDL_PollEvent(&e))
-            {
-                if (e.type == SDL_QUIT)
-                {
-                    running = false;
-                }
-            }
-        }
-
-        return ec;
-    }
-
-    void Player::destroySDL()
-    {
-        if (_texture != nullptr)
-        {
-            SDL_DestroyTexture(_texture);
-            _texture = nullptr;
-        }
-
-        if (_renderer != nullptr)
-        {
-            SDL_DestroyRenderer(_renderer);
-            _renderer = nullptr;
-        }
-
-        if (_window != nullptr)
-        {
-            SDL_DestroyWindow(_window);
-            _window = nullptr;
-        }
-
-        SDL_Quit();
-
-        _sdlInitialized = false;
-    }
-
-    void Player::videoRefresh(const AVFrame *yuvFrame, int64_t startTime, AVRational bq, AVRational cq)
-    {
-        if (!_sdlInitialized)
-            return;
-
-        SDL_UpdateYUVTexture(_texture, &_rect,
-                             yuvFrame->data[0], yuvFrame->linesize[0],
-                             yuvFrame->data[1], yuvFrame->linesize[1],
-                             yuvFrame->data[2], yuvFrame->linesize[2]);
-
-        SDL_RenderClear(_renderer);
-        SDL_RenderCopy(_renderer, _texture, nullptr, &_rect);
-        SDL_RenderPresent(_renderer);
-
-        int64_t delay = av_rescale_q(yuvFrame->pkt_dts - startTime, bq, cq);
-        SDL_Delay(delay);
-    }
-
     int Player::getStreamInfo(const std::string_view &file)
     {
         int ec = 0;
@@ -752,64 +665,6 @@ namespace fpd
     {
         int ec = 0;
 
-        // FormatContext formatCtx;
-
-        // if ((ec = formatCtx.openInput(file, nullptr, nullptr)) < 0)
-        // {
-        //     LOG_ERROR("Failed to open input file: %s", file.data());
-        //     return ec;
-        // }
-
-        // if ((ec = avformat_find_stream_info(formatCtx.get(), nullptr)) < 0)
-        // {
-        //     LOG_ERROR("Failed to find stream info for input file: %s", file.data());
-        //     return ec;
-        // }
-
-        // int videoStreamidx;
-
-        // ec = av_find_best_stream(formatCtx.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
-        // if (ec < 0)
-        // {
-        //     LOG_ERROR("Failed to find best video stream for input file: %s", file.data());
-        //     return ec;
-        // }
-        // else
-        //     videoStreamidx = ec;
-
-        // AVStream *videoInStream = formatCtx->streams[videoStreamidx];
-
-        // const AVCodec *videoCodec = avcodec_find_decoder(videoInStream->codecpar->codec_id);
-
-        // if (videoCodec == nullptr)
-        // {
-        //     LOG_ERROR("Failed to find decoder for video stream: %s", file.data());
-        //     return AVERROR_DECODER_NOT_FOUND;
-        // }
-
-        // CodecContext videoCodecCtx(videoCodec);
-
-        // if ((ec = avcodec_parameters_to_context(videoCodecCtx.get(), videoInStream->codecpar)) < 0)
-        // {
-        //     LOG_ERROR("Failed to copy codec parameters to codec context for video stream: %s", file.data());
-        //     return ec;
-        // }
-
-        // if ((ec = avcodec_open2(videoCodecCtx.get(), videoCodec, nullptr)) < 0)
-        // {
-        //     LOG_ERROR("Failed to open codec for video stream: %s", file.data());
-        //     return ec;
-        // }
-
-        // AVPacket pkt;
-        // if ((ec = av_new_packet(&pkt, videoCodecCtx->width * videoCodecCtx->height)))
-        // {
-        //     LOG_ERROR("Failed to alloc packet for video stream: %s", file.data());
-        //     return ec;
-        // }
-
-        // initSDL(videoCodecCtx->width, videoCodecCtx->height);
-
         auto filenameNoExt = Utils::getFilenameNoExt(file);
         auto videoYuvOutFilename = filenameNoExt + ".yuv";
 
@@ -817,7 +672,7 @@ namespace fpd
 
         Decoder decoder(Decoder::INIT_VIDEO, file);
 
-        std::function<void(const AVMediaType type, AVFrame *frame)> onDecodedFrame = [&](const AVMediaType type, AVFrame *frame)
+        std::function<void(const AVMediaType type, AVFrame *frame)> onReceiveFrame = [&](const AVMediaType type, AVFrame *frame)
         {
             if (type == AVMEDIA_TYPE_VIDEO)
             {
@@ -838,7 +693,7 @@ namespace fpd
             shouldExit = true;
         };
 
-        decoder.start(onDecodedFrame, onDecoderExit);
+        decoder.start(onReceiveFrame, onDecoderExit);
 
         while (!shouldExit)
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
