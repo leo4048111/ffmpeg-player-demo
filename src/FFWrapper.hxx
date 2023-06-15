@@ -28,6 +28,9 @@ extern "C"
 #endif
 #endif
 
+#include <queue>
+#include <mutex>
+
 namespace fpd
 {
     class FormatContext
@@ -172,6 +175,7 @@ namespace fpd
                 {
                     _avFrame = av_frame_alloc();
                 }
+
                 if (_avFrame != nullptr)
                 {
                     av_frame_ref(_avFrame, other._avFrame);
@@ -179,7 +183,7 @@ namespace fpd
             }
             return *this;
         }
-        
+
         Frame(Frame &&other)
         {
             _avFrame = other.get();
@@ -209,5 +213,18 @@ namespace fpd
 
     private:
         AVFrame *_avFrame{nullptr};
+    };
+
+    using StreamInfo = struct StreamInfo
+    {
+        AVMediaType type;
+        const AVCodec *codec;
+        std::queue<Frame> frameQueue;
+        std::mutex queueLock;
+
+        StreamInfo(AVMediaType type, const AVCodec *codec)
+            : type(type), codec(codec)
+        {
+        }
     };
 }

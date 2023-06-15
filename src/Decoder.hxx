@@ -31,7 +31,6 @@ extern "C"
 #include <string>
 #include <unordered_map>
 #include <stdexcept>
-#include <memory>
 #include <thread>
 #include <functional>
 
@@ -45,16 +44,19 @@ namespace fpd
         static const int INIT_VIDEO = 0x01;
         static const int INIT_AUDIO = 0x02;
 
-        using DecoderCallback = std::function<void(const AVMediaType type, AVFrame *frame)>;
-
+        using DecoderCallback = std::function<void()>;
+        
         Decoder(int flag, const std::string_view &file);
         ~Decoder();
 
-        int start(DecoderCallback onDecodedFrame, DecoderCallback onDecoderExit);
+        int start(DecoderCallback onDecoderExit);
+
+        bool receive(const AVMediaType type, Frame& frame);
 
     private:
-        AVFormatContext *_avFormatCtx{nullptr};
+        FormatContext _formatCtx;
         int _flag{0};
+        std::unordered_map<int, std::unique_ptr<StreamInfo>> _streamInfoMap;
         std::unordered_map<int, std::unique_ptr<CodecContext>> _streamDecoderMap;
         std::thread _t;
     };

@@ -817,19 +817,19 @@ namespace fpd
 
         Decoder decoder(Decoder::INIT_VIDEO, file);
 
-        std::function<void(const AVMediaType type, AVFrame *frame)> onDecodedFrame = [&](const AVMediaType type, AVFrame *frame)
-        {
-            if (type == AVMEDIA_TYPE_VIDEO)
-            {
-                videoYuvOutFile.write((const char *)frame->data[0], frame->linesize[0] * frame->height);
-                videoYuvOutFile.write((const char *)frame->data[1], frame->linesize[1] * frame->height / 2);
-                videoYuvOutFile.write((const char *)frame->data[2], frame->linesize[2] * frame->height / 2);
-            }
-        };
+        // std::function<void(const AVMediaType type, AVFrame *frame)> onDecodedFrame = [&](const AVMediaType type, AVFrame *frame)
+        // {
+        //     if (type == AVMEDIA_TYPE_VIDEO)
+        //     {
+        //         videoYuvOutFile.write((const char *)frame->data[0], frame->linesize[0] * frame->height);
+        //         videoYuvOutFile.write((const char *)frame->data[1], frame->linesize[1] * frame->height / 2);
+        //         videoYuvOutFile.write((const char *)frame->data[2], frame->linesize[2] * frame->height / 2);
+        //     }
+        // };
 
         bool shouldExit = false;
 
-        std::function<void(const AVMediaType type, AVFrame *frame)> onDecoderExit = [&](const AVMediaType type, AVFrame *frame)
+        std::function<void()> onDecoderExit = [&]()
         {
             LOG_INFO("Dumped yuv data to file: %s", videoYuvOutFilename.c_str());
 
@@ -838,7 +838,7 @@ namespace fpd
             shouldExit = true;
         };
 
-        decoder.start(onDecodedFrame, onDecoderExit);
+        decoder.start(onDecoderExit);
 
         while (!shouldExit)
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
