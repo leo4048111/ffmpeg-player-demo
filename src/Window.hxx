@@ -18,6 +18,8 @@ extern "C"
 #endif
 #endif
 
+#include <functional>
+
 #include "Singleton.hxx"
 
 namespace fpd
@@ -27,11 +29,21 @@ namespace fpd
         SINGLETON(Window)
 
     public:
-        bool init(const int windowWidth, const int windowHeight);
+        using WindowLoopCallback = std::function<void()>;
 
-        void loop();
+    public:
+        bool init(const int width, const int height);
+
+        void loop(WindowLoopCallback onWindowLoop);
 
         void destroy();
+
+        void videoRefresh(const Uint8 *ydata, const int ysize,
+                          const Uint8 *udata, const int usize,
+                          const Uint8 *vdata, const int vsize,
+                          int64_t delay);
+
+        void resize(const int width, const int height);
 
     private:
         SDL_Window *_window{nullptr};

@@ -29,6 +29,8 @@ extern "C"
 #endif
 
 #include <string_view>
+#include <queue>
+#include <mutex>
 
 #include "Singleton.hxx"
 
@@ -52,5 +54,7 @@ namespace fpd
         int dumpYUVAndPlayVideoStream(const std::string_view &file);
 
     private:
+        std::queue<AVFrame*> _videoFrameQueue;
+        std::mutex _videoFrameQueueMutex;
     };
 }

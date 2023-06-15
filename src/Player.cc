@@ -7,6 +7,7 @@
 #include "Utils.hxx"
 #include "FFWrapper.hxx"
 #include "Decoder.hxx"
+#include "Window.hxx"
 
 namespace
 {
@@ -679,6 +680,11 @@ namespace fpd
                 videoYuvOutFile.write((const char *)frame->data[0], frame->linesize[0] * frame->height);
                 videoYuvOutFile.write((const char *)frame->data[1], frame->linesize[1] * frame->height / 2);
                 videoYuvOutFile.write((const char *)frame->data[2], frame->linesize[2] * frame->height / 2);
+
+                AVFrame *tmp = av_frame_alloc();
+                av_frame_ref(tmp, frame);
+                std::lock_guard<std::mutex> lock(_videoFrameQueueMutex);
+                _videoFrameQueue.push(tmp);
             }
         };
 
@@ -693,7 +699,32 @@ namespace fpd
             shouldExit = true;
         };
 
+        Window::instance().init(1280, 720);
+
         decoder.start(onReceiveFrame, onDecoderExit);
+
+        auto onWindowLoop = [=]()
+        {
+            AVFrame *frame;
+
+            if (!_videoFrameQueue.empty())
+            {
+                {
+                    std::lock_guard<std::mutex> lock(_videoFrameQueueMutex);
+                    frame = _videoFrameQueue.front();
+                    _videoFrameQueue.pop();
+                }
+
+                Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
+                                                frame->data[1], frame->linesize[1],
+                                                frame->data[2], frame->linesize[2],
+                                                10);
+
+                av_frame_unref(frame);
+            }
+        };
+
+        Window::instance().loop(onWindowLoop);
 
         while (!shouldExit)
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));

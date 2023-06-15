@@ -7,7 +7,7 @@ namespace fpd
     Window::Window() = default;
     Window::~Window() = default;
 
-    bool Window::init(const int windowWidth, const int windowHeight)
+    bool Window::init(const int width, const int height)
     {
         int ec = 0;
 
@@ -15,7 +15,7 @@ namespace fpd
 
         _window = SDL_CreateWindow("ffmpeg player demo",
                                    SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                   windowWidth, windowHeight,
+                                   width, height,
                                    SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
 
         if (_window == nullptr)
@@ -28,11 +28,11 @@ namespace fpd
         _texture = SDL_CreateTexture(_renderer,
                                      SDL_PIXELFORMAT_IYUV,
                                      SDL_TEXTUREACCESS_STREAMING,
-                                     windowWidth, windowHeight);
+                                     width, height);
         _rect.x = 0;
         _rect.y = 0;
-        _rect.w = windowWidth;
-        _rect.h = windowHeight;
+        _rect.w = width;
+        _rect.h = height;
         _sdlInitialized = true;
 
         return ec;
@@ -63,12 +63,22 @@ namespace fpd
         _sdlInitialized = false;
     }
 
-    void Window::loop()
+    void Window::resize(const int width, const int height)
+    {
+        if (!_sdlInitialized)
+            return;
+
+        _rect.w = width;
+        _rect.h = height;
+    }
+
+    void Window::loop(WindowLoopCallback onWindowLoop)
     {
         _running = true;
         SDL_Event e;
         while (_running)
         {
+            onWindowLoop();
             while (SDL_PollEvent(&e))
             {
                 if (e.type == SDL_QUIT)
@@ -79,22 +89,23 @@ namespace fpd
         }
     }
 
-    // void Window::videoRefresh(const AVFrame *yuvFrame, int64_t startTime, AVRational bq, AVRational cq)
-    // {
-    //     if (!_sdlInitialized)
-    //         return;
+    void Window::videoRefresh(const Uint8 *ydata, const int ysize,
+                              const Uint8 *udata, const int usize,
+                              const Uint8 *vdata, const int vsize,
+                              int64_t delay)
+    {
+        if (!_sdlInitialized)
+            return;
 
-    //     SDL_UpdateYUVTexture(_texture, &_rect,
-    //                          yuvFrame->data[0], yuvFrame->linesize[0],
-    //                          yuvFrame->data[1], yuvFrame->linesize[1],
-    //                          yuvFrame->data[2], yuvFrame->linesize[2]);
+        SDL_UpdateYUVTexture(_texture, &_rect,
+                             ydata, ysize,
+                             udata, usize,
+                             vdata, vsize);
 
-    //     SDL_RenderClear(_renderer);
-    //     SDL_RenderCopy(_renderer, _texture, nullptr, &_rect);
-    //     SDL_RenderPresent(_renderer);
+        SDL_RenderClear(_renderer);
+        SDL_RenderCopy(_renderer, _texture, nullptr, &_rect);
+        SDL_RenderPresent(_renderer);
 
-    //     int64_t delay = av_rescale_q(yuvFrame->pkt_dts - startTime, bq, cq);
-    //     SDL_Delay(delay);
-    // }
-
+        SDL_Delay(delay);
+    }
 }
