@@ -27,16 +27,11 @@ namespace fpd
         SINGLETON(Window)
 
     public:
-        bool init();
+        bool init(const int windowWidth, const int windowHeight);
 
         void loop();
 
-        bool destroy();
-
-    private:
-        int initSDL(const int windowWidth, const int windowHeight);
-
-        void destroySDL();
+        void destroy();
 
     private:
         SDL_Window *_window{nullptr};
@@ -44,5 +39,6 @@ namespace fpd
         SDL_Texture *_texture{nullptr};
         SDL_Rect _rect;
         bool _sdlInitialized{false};
+        bool _running{false};
     };
 }

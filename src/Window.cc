@@ -4,7 +4,7 @@
 
 namespace fpd
 {
-    int Window::initSDL(const int windowWidth, const int windowHeight)
+    bool Window::init(const int windowWidth, const int windowHeight)
     {
         int ec = 0;
 
@@ -32,23 +32,10 @@ namespace fpd
         _rect.h = windowHeight;
         _sdlInitialized = true;
 
-        SDL_Event e;
-        bool running = true;
-        while (running)
-        {
-            while (SDL_PollEvent(&e))
-            {
-                if (e.type == SDL_QUIT)
-                {
-                    running = false;
-                }
-            }
-        }
-
         return ec;
     }
 
-    void Window::destroySDL()
+    void Window::destroy()
     {
         if (_texture != nullptr)
         {
@@ -71,6 +58,22 @@ namespace fpd
         SDL_Quit();
 
         _sdlInitialized = false;
+    }
+
+    void Window::loop()
+    {
+        _running = true;
+        SDL_Event e;
+        while (_running)
+        {
+            while (SDL_PollEvent(&e))
+            {
+                if (e.type == SDL_QUIT)
+                {
+                    _running = false;
+                }
+            }
+        }
     }
 
     // void Window::videoRefresh(const AVFrame *yuvFrame, int64_t startTime, AVRational bq, AVRational cq)
