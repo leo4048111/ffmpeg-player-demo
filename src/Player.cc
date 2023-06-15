@@ -810,14 +810,10 @@ namespace fpd
 
         // initSDL(videoCodecCtx->width, videoCodecCtx->height);
 
-        AVFrame *yuvFrame = av_frame_alloc();
-
         auto filenameNoExt = Utils::getFilenameNoExt(file);
         auto videoYuvOutFilename = filenameNoExt + ".yuv";
 
         std::ofstream videoYuvOutFile(videoYuvOutFilename, std::ios::binary);
-
-        std::mutex x;
 
         Decoder decoder(Decoder::INIT_VIDEO, file);
 
@@ -825,7 +821,6 @@ namespace fpd
         {
             if (type == AVMEDIA_TYPE_VIDEO)
             {
-                std::lock_guard<std::mutex> lock(x);
                 videoYuvOutFile.write((const char *)frame->data[0], frame->linesize[0] * frame->height);
                 videoYuvOutFile.write((const char *)frame->data[1], frame->linesize[1] * frame->height / 2);
                 videoYuvOutFile.write((const char *)frame->data[2], frame->linesize[2] * frame->height / 2);

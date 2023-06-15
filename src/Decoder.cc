@@ -86,13 +86,16 @@ namespace fpd
                     // has valid codec
                     AVFrame* frame = av_frame_alloc();
                     AVCodecContext* codecCtx = _streamDecoderMap[pkt.stream_index]->get();
+                    AVStream* avStream = _avFormatCtx->streams[pkt.stream_index];
                     if(avcodec_send_packet(codecCtx, &pkt) == 0)
                     {
                         while(avcodec_receive_frame(codecCtx, frame) == 0)
                         {
-                            onDecodedFrame(_avFormatCtx->streams[pkt.stream_index]->codecpar->codec_type, frame);
+                            onDecodedFrame(avStream->codecpar->codec_type, frame);
                         }
                     }
+
+                    av_frame_free(&frame);
                 }
 
                 av_packet_unref(&pkt);
