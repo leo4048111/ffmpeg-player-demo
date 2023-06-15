@@ -4,6 +4,9 @@
 
 namespace fpd
 {
+    Window::Window() = default;
+    Window::~Window() = default;
+
     bool Window::init(const int windowWidth, const int windowHeight)
     {
         int ec = 0;
