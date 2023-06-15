@@ -39,6 +39,11 @@ namespace fpd
                 _avFormatCtx = avformat_alloc_context();
         }
 
+        FormatContext(const std::string_view &file, AVInputFormat *fmt = nullptr, AVDictionary **options = nullptr)
+        {
+            avformat_open_input(&_avFormatCtx, file.data(), fmt, options);
+        }
+
         ~FormatContext()
         {
             if (_avFormatCtx != nullptr)
@@ -129,5 +134,80 @@ namespace fpd
 
     private:
         AVCodecContext *_avCodecCtx{nullptr};
+    };
+
+    class Frame
+    {
+    public:
+        Frame()
+        {
+            if (_avFrame == nullptr)
+                _avFrame = av_frame_alloc();
+        }
+
+        ~Frame()
+        {
+            if (_avFrame != nullptr)
+                av_frame_free(&_avFrame);
+        }
+
+        Frame(const Frame &other)
+        {
+            _avFrame = av_frame_alloc();
+            if (_avFrame != nullptr)
+            {
+                av_frame_ref(_avFrame, other._avFrame);
+            }
+        }
+
+        Frame &operator=(const Frame &other)
+        {
+            if (this != &other)
+            {
+                if (_avFrame != nullptr)
+                {
+                    av_frame_unref(_avFrame); // 先释放原来的数据
+                }
+                else
+                {
+                    _avFrame = av_frame_alloc();
+                }
+                if (_avFrame != nullptr)
+                {
+                    av_frame_ref(_avFrame, other._avFrame);
+                }
+            }
+            return *this;
+        }
+        
+        Frame(Frame &&other)
+        {
+            _avFrame = other.get();
+            other.set(nullptr);
+        }
+        Frame &operator=(Frame &&other)
+        {
+            _avFrame = other.get();
+            other.set(nullptr);
+            return *this;
+        }
+
+        AVFrame *operator->() const
+        {
+            return _avFrame;
+        }
+
+        AVFrame *get() const
+        {
+            return _avFrame;
+        }
+
+        void set(AVFrame *frame)
+        {
+            _avFrame = frame;
+        }
+
+    private:
+        AVFrame *_avFrame{nullptr};
     };
 }
