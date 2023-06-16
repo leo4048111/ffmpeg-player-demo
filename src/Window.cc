@@ -7,7 +7,7 @@ namespace fpd
     Window::Window() = default;
     Window::~Window() = default;
 
-    bool Window::init(const int width, const int height)
+    bool Window::init(const int windowWidth, const int windowHeight, const int textureWidth, const int textureHeight)
     {
         int ec = 0;
 
@@ -15,7 +15,7 @@ namespace fpd
 
         _window = SDL_CreateWindow("ffmpeg player demo",
                                    SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                   width, height,
+                                   windowWidth, windowHeight,
                                    SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN);
 
         if (_window == nullptr)
@@ -28,11 +28,14 @@ namespace fpd
         _texture = SDL_CreateTexture(_renderer,
                                      SDL_PIXELFORMAT_IYUV,
                                      SDL_TEXTUREACCESS_STREAMING,
-                                     width, height);
-        _rect.x = 0;
-        _rect.y = 0;
-        _rect.w = width;
-        _rect.h = height;
+                                     textureWidth, textureHeight);
+
+        _windowRect.x = _textureRect.x = 0;
+        _windowRect.y = _textureRect.y = 0;
+        _windowRect.w = windowWidth;
+        _windowRect.h = windowHeight;
+        _textureRect.w = textureWidth;
+        _textureRect.h = textureHeight;
         _sdlInitialized = true;
 
         return ec;
@@ -68,8 +71,8 @@ namespace fpd
         if (!_sdlInitialized)
             return;
 
-        _rect.w = width;
-        _rect.h = height;
+        // _rect.w = width;
+        // _rect.h = height;
     }
 
     void Window::loop(WindowLoopCallback onWindowLoop)
@@ -97,13 +100,13 @@ namespace fpd
         if (!_sdlInitialized)
             return;
 
-        SDL_UpdateYUVTexture(_texture, &_rect,
+        SDL_UpdateYUVTexture(_texture, &_textureRect,
                              ydata, ysize,
                              udata, usize,
                              vdata, vsize);
 
         SDL_RenderClear(_renderer);
-        SDL_RenderCopy(_renderer, _texture, nullptr, &_rect);
+        SDL_RenderCopy(_renderer, _texture, &_textureRect, &_windowRect);
         SDL_RenderPresent(_renderer);
 
         SDL_Delay(delay);

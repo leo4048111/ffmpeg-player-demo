@@ -32,7 +32,7 @@ namespace fpd
         using WindowLoopCallback = std::function<void()>;
 
     public:
-        bool init(const int width, const int height);
+        bool init(const int windowWidth, const int windowHeight, const int textureWidth, const int textureHeight);
 
         void loop(WindowLoopCallback onWindowLoop);
 
@@ -49,7 +49,8 @@ namespace fpd
         SDL_Window *_window{nullptr};
         SDL_Renderer *_renderer{nullptr};
         SDL_Texture *_texture{nullptr};
-        SDL_Rect _rect;
+        SDL_Rect _textureRect;
+        SDL_Rect _windowRect;
         bool _sdlInitialized{false};
         bool _running{false};
     };

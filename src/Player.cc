@@ -699,8 +699,9 @@ namespace fpd
             shouldExit = true;
         };
 
-        // Window::instance().init(1280, 720);
-        Window::instance().init(decoder.getVideoWidth(), decoder.getVideoHeight());
+        // Window::instance().init(3000, 2000);
+        Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
+                                decoder.getVideoWidth(), decoder.getVideoHeight());
 
         decoder.start(onReceiveFrame, onDecoderExit);
 

@@ -41,6 +41,10 @@ namespace fpd
         SINGLETON(Player)
 
     public:
+        static const int PLAYER_WINDOW_WIDTH = 1280;
+        static const int PLAYER_WINDOW_HEIGHT = 720;
+
+    public:
         static std::string_view getPlayerModeName(const int mode);
 
         int getStreamInfo(const std::string_view &file);
