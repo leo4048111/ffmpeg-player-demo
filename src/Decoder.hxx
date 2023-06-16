@@ -52,10 +52,18 @@ namespace fpd
 
         int start(DecoderCallback onReceiveFrame, DecoderCallback onDecoderExit);
 
+        const int getVideoWidth() const;
+        const int getVideoHeight() const;
+
     private:
         AVFormatContext *_avFormatCtx{nullptr};
         int _flag{0};
         std::unordered_map<int, std::unique_ptr<CodecContext>> _streamDecoderMap;
         std::thread _t;
+        int _videoStreamIdx{-1};
+        int _audioStreamIdx{-1};
+
+        int _videoWidth{0};
+        int _videoHeight{0};
     };
 }

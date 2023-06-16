@@ -9,27 +9,23 @@ namespace fpd
     {
         if (avformat_open_input(&_avFormatCtx, file.data(), nullptr, nullptr) != 0)
             throw std::runtime_error("Could not open file " + std::string(file));
-    }
 
-    Decoder::~Decoder()
-    {
-        avformat_close_input(&_avFormatCtx);
-    }
+        if (avformat_find_stream_info(_avFormatCtx, nullptr) < 0)
+            throw std::runtime_error("Could not find stream information");
 
-    int Decoder::start(DecoderCallback onReceiveFrame, DecoderCallback onDecoderExit)
-    {
         int ec = 0;
-
         if (_flag & INIT_VIDEO)
         {
             ec = av_find_best_stream(_avFormatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
             if (ec < 0)
             {
-                LOG_ERROR("Could not find video stream in input file");
-                return ec;
+                LOG_WARNING("Could not find video stream in input file");
             }
             else
+            {
+                _videoStreamIdx = ec;
                 _streamDecoderMap[ec] = nullptr;
+            }
         }
 
         if (_flag & INIT_AUDIO)
@@ -37,12 +33,40 @@ namespace fpd
             ec = av_find_best_stream(_avFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
             if (ec < 0)
             {
-                LOG_ERROR("Could not find audio stream in input file");
-                return ec;
+                LOG_WARNING("Could not find audio stream in input file");
             }
             else
+            {
+                _audioStreamIdx = ec;
                 _streamDecoderMap[ec] = nullptr;
+            }
         }
+    }
+
+    Decoder::~Decoder()
+    {
+        avformat_close_input(&_avFormatCtx);
+    }
+
+    const int Decoder::getVideoWidth() const
+    {
+        if (_videoStreamIdx != -1)
+            return _avFormatCtx->streams[_videoStreamIdx]->codecpar->width;
+        else
+            return 0;
+    }
+
+    const int Decoder::getVideoHeight() const
+    {
+        if (_videoStreamIdx != -1)
+            return _avFormatCtx->streams[_videoStreamIdx]->codecpar->height;
+        else
+            return 0;
+    }
+
+    int Decoder::start(DecoderCallback onReceiveFrame, DecoderCallback onDecoderExit)
+    {
+        int ec = 0;
 
         // init codec ctx for all streams to be decoded
         for (auto &x : _streamDecoderMap)
@@ -81,15 +105,15 @@ namespace fpd
 
             while (av_read_frame(_avFormatCtx, &pkt) >= 0)
             {
-                if(_streamDecoderMap.find(pkt.stream_index) != _streamDecoderMap.end())
+                if (_streamDecoderMap.find(pkt.stream_index) != _streamDecoderMap.end())
                 {
                     // has valid codec
-                    AVFrame* frame = av_frame_alloc();
-                    AVCodecContext* codecCtx = _streamDecoderMap[pkt.stream_index]->get();
-                    AVStream* avStream = _avFormatCtx->streams[pkt.stream_index];
-                    if(avcodec_send_packet(codecCtx, &pkt) == 0)
+                    AVFrame *frame = av_frame_alloc();
+                    AVCodecContext *codecCtx = _streamDecoderMap[pkt.stream_index]->get();
+                    AVStream *avStream = _avFormatCtx->streams[pkt.stream_index];
+                    if (avcodec_send_packet(codecCtx, &pkt) == 0)
                     {
-                        while(avcodec_receive_frame(codecCtx, frame) == 0)
+                        while (avcodec_receive_frame(codecCtx, frame) == 0)
                         {
                             onReceiveFrame(avStream->codecpar->codec_type, frame);
                         }
