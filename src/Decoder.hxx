@@ -54,6 +54,12 @@ namespace fpd
 
         void stop();
 
+        void pause();
+
+        void resume();
+
+        bool isPaused() const;
+
         const int getVideoWidth() const;
         const int getVideoHeight() const;
 
@@ -63,6 +69,7 @@ namespace fpd
         AVFormatContext *_avFormatCtx{nullptr};
         int _flag{0};
         int _running{false};
+        int _paused{false};
         std::unordered_map<int, std::unique_ptr<CodecContext>> _streamDecoderMap;
         std::thread _t;
         int _videoStreamIdx{-1};

@@ -112,14 +112,23 @@ namespace fpd
 
         // start decode thread
         _running = true;
+        _paused = false;
+
         auto x = [=]()
         {
             AVPacket pkt;
             auto x = std::make_unique<spinner::spinner>(41);
             x->start();
 
-            while (_running && (av_read_frame(_avFormatCtx, &pkt) >= 0))
+            while (_running)
             {
+                if (_paused)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    continue;
+                }
+                if (av_read_frame(_avFormatCtx, &pkt) < 0)
+                    break;
                 if (_streamDecoderMap.find(pkt.stream_index) != _streamDecoderMap.end())
                 {
                     // has valid codec
@@ -153,5 +162,20 @@ namespace fpd
     void Decoder::stop()
     {
         _running = false;
+    }
+
+    void Decoder::pause()
+    {
+        _paused = true;
+    }
+
+    void Decoder::resume()
+    {
+        _paused = false;
+    }
+
+    bool Decoder::isPaused() const
+    {
+        return _paused;
     }
 }

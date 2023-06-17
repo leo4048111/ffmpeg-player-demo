@@ -703,7 +703,7 @@ namespace fpd
 
         AVRational videoStreamTimebase = decoder.getStreamTimebase(AVMEDIA_TYPE_VIDEO);
 
-        auto onWindowLoop = [=]()
+        auto onWindowLoop = [&]()
         {
             AVFrame *frame;
 
@@ -713,6 +713,10 @@ namespace fpd
             {
                 {
                     std::lock_guard<std::mutex> lock(_videoFrameQueueMutex);
+                    if (_videoFrameQueue.size() > 10)
+                        decoder.pause();
+                    else if (decoder.isPaused())
+                        decoder.resume();
                     frame = _videoFrameQueue.front();
                     _videoFrameQueue.pop();
                 }
@@ -722,7 +726,7 @@ namespace fpd
                 Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                 frame->data[1], frame->linesize[1],
                                                 frame->data[2], frame->linesize[2],
-                                                delay);
+                                                10);
 
                 av_frame_unref(frame);
             }
