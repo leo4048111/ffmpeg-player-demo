@@ -64,6 +64,20 @@ namespace fpd
             return 0;
     }
 
+    const AVRational Decoder::getStreamTimebase(const AVMediaType type) const
+    {
+        int ec = 0;
+        ec = av_find_best_stream(_avFormatCtx, type, -1, -1, nullptr, 0);
+        if (ec < 0)
+        {
+            return AVRational{0, 0};
+        }
+        else
+        {
+            return _avFormatCtx->streams[ec]->time_base;
+        }
+    }
+
     int Decoder::start(DecoderCallback onReceiveFrame, DecoderCallback onDecoderExit)
     {
         int ec = 0;
@@ -97,13 +111,14 @@ namespace fpd
         }
 
         // start decode thread
+        _running = true;
         auto x = [=]()
         {
             AVPacket pkt;
             auto x = std::make_unique<spinner::spinner>(41);
             x->start();
 
-            while (av_read_frame(_avFormatCtx, &pkt) >= 0)
+            while (_running && (av_read_frame(_avFormatCtx, &pkt) >= 0))
             {
                 if (_streamDecoderMap.find(pkt.stream_index) != _streamDecoderMap.end())
                 {
@@ -133,5 +148,10 @@ namespace fpd
         _t.detach();
 
         return ec;
+    }
+
+    void Decoder::stop()
+    {
+        _running = false;
     }
 }

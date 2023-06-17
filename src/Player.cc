@@ -688,15 +688,11 @@ namespace fpd
             }
         };
 
-        bool shouldExit = false;
-
         std::function<void(const AVMediaType type, AVFrame *frame)> onDecoderExit = [&](const AVMediaType type, AVFrame *frame)
         {
             LOG_INFO("Dumped yuv data to file: %s", videoYuvOutFilename.c_str());
 
             videoYuvOutFile.close();
-
-            shouldExit = true;
         };
 
         // Window::instance().init(3000, 2000);
@@ -705,9 +701,13 @@ namespace fpd
 
         decoder.start(onReceiveFrame, onDecoderExit);
 
+        AVRational videoStreamTimebase = decoder.getStreamTimebase(AVMEDIA_TYPE_VIDEO);
+
         auto onWindowLoop = [=]()
         {
             AVFrame *frame;
+
+            static int64_t previousPTS = 0;
 
             if (!_videoFrameQueue.empty())
             {
@@ -717,20 +717,20 @@ namespace fpd
                     _videoFrameQueue.pop();
                 }
 
+                int delay = (frame->pts - previousPTS) * av_q2d(videoStreamTimebase) * 1000;
+
                 Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                 frame->data[1], frame->linesize[1],
                                                 frame->data[2], frame->linesize[2],
-                                                10);
+                                                delay);
 
                 av_frame_unref(frame);
             }
         };
 
         Window::instance().loop(onWindowLoop);
-
-        while (!shouldExit)
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
+        Window::instance().destroy();
+        decoder.stop();
         return ec;
     }
 }
