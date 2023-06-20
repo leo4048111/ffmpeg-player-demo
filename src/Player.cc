@@ -735,9 +735,7 @@ namespace fpd
                     // too late, drop frame and rebase timestamp
                     if (diff > 0.1)
                     {
-                        videoStartTime = av_gettime_relative() / 1000000.0 - pts;
-                        currentTime = pts;
-                        diff = 0;
+                        videoStartTime = av_gettime_relative() / 1000000.0;
                     }
                     else
                     {
@@ -752,7 +750,7 @@ namespace fpd
                         }
 
                         // render frame if not too early or too late
-                        if (abs(diff) <= 0.1)
+                        if (abs(diff) <= 0.05)
                         {
                             Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                             frame->data[1], frame->linesize[1],
