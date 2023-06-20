@@ -94,8 +94,7 @@ namespace fpd
 
     void Window::videoRefresh(const Uint8 *ydata, const int ysize,
                               const Uint8 *udata, const int usize,
-                              const Uint8 *vdata, const int vsize,
-                              int64_t delay)
+                              const Uint8 *vdata, const int vsize)
     {
         if (!_sdlInitialized)
             return;
@@ -108,7 +107,5 @@ namespace fpd
         SDL_RenderClear(_renderer);
         SDL_RenderCopy(_renderer, _texture, &_textureRect, &_windowRect);
         SDL_RenderPresent(_renderer);
-
-        SDL_Delay(delay);
     }
 }

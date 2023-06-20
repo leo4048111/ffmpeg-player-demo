@@ -40,8 +40,7 @@ namespace fpd
 
         void videoRefresh(const Uint8 *ydata, const int ysize,
                           const Uint8 *udata, const int usize,
-                          const Uint8 *vdata, const int vsize,
-                          int64_t delay);
+                          const Uint8 *vdata, const int vsize);
 
         void resize(const int width, const int height);
 
