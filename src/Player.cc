@@ -707,7 +707,7 @@ namespace fpd
         {
             AVFrame *frame;
 
-            static int64_t previousPTS = 0;
+            static double videoStartTime = av_gettime_relative() / 1000000.0;
 
             if (!_videoFrameQueue.empty())
             {
@@ -721,12 +721,45 @@ namespace fpd
                     _videoFrameQueue.pop();
                 }
 
-                int delay = (frame->pts - previousPTS) * av_q2d(videoStreamTimebase) * 1000;
+                if (AV_NOPTS_VALUE == frame->pts)
+                {
+                    Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
+                                                    frame->data[1], frame->linesize[1],
+                                                    frame->data[2], frame->linesize[2]);
+                }
+                else
+                {
+                    double currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
+                    double pts = frame->pts * (double)videoStreamTimebase.num / videoStreamTimebase.den;
+                    double diff = currentTime - pts;
+                    // too late, drop frame and rebase timestamp
+                    if (diff > 0.1)
+                    {
+                        videoStartTime = av_gettime_relative() / 1000000.0 - pts;
+                        currentTime = pts;
+                        diff = 0;
+                    }
+                    else
+                    {
+                        // too early, wait some proper time
+                        if (diff < 0.0)
+                        {
+                            if (diff < -0.1)
+                                diff = -0.1;
+                            av_usleep((unsigned int)(-diff * 1000000));
+                            currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
+                            diff = currentTime - pts;
+                        }
 
-                Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
-                                                frame->data[1], frame->linesize[1],
-                                                frame->data[2], frame->linesize[2],
-                                                10);
+                        // render frame if not too early or too late
+                        if (abs(diff) <= 0.1)
+                        {
+                            Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
+                                                            frame->data[1], frame->linesize[1],
+                                                            frame->data[2], frame->linesize[2]);
+                        }
+                    }
+                }
 
                 av_frame_unref(frame);
             }
