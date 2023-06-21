@@ -60,6 +60,8 @@ namespace fpd
 
         bool isPaused() const;
 
+        const bool hasStream(const AVMediaType type) const;
+
         const int getVideoWidth() const;
         const int getVideoHeight() const;
 

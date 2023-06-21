@@ -597,6 +597,11 @@ namespace fpd
         std::ofstream videoYuvOutFile(videoYuvOutFilename, std::ios::binary);
 
         Decoder decoder(Decoder::INIT_VIDEO, file);
+        if (!decoder.hasStream(AVMEDIA_TYPE_VIDEO))
+        {
+            LOG_ERROR("Failed to find video stream for input file: %s", file.data());
+            return AVERROR(EINVAL);
+        }
         auto spin = std::make_unique<spinner::spinner>(41);
         spin->start();
 
@@ -706,7 +711,6 @@ namespace fpd
             av_frame_unref(frame);
         };
 
-
         Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
                                 decoder.getVideoWidth(), decoder.getVideoHeight());
 
@@ -727,6 +731,11 @@ namespace fpd
         std::ofstream audioPcmOutFile(audioPcmOutFilename, std::ios::binary);
 
         Decoder decoder(Decoder::INIT_AUDIO, file);
+        if (!decoder.hasStream(AVMEDIA_TYPE_AUDIO))
+        {
+            LOG_ERROR("Failed to find audio stream for input file: %s", file.data());
+            return AVERROR(EINVAL);
+        }
 
         SDL_AudioSpec spec;
         spec.freq = decoder.getAudioSampleRate();
@@ -793,6 +802,17 @@ namespace fpd
         int ec = 0;
 
         Decoder decoder(Decoder::INIT_VIDEO | Decoder::INIT_AUDIO, file);
+        if (!decoder.hasStream(AVMEDIA_TYPE_VIDEO))
+        {
+            LOG_ERROR("Failed to find video stream for input file: %s", file.data());
+            return AVERROR(EINVAL);
+        }
+
+        if (!decoder.hasStream(AVMEDIA_TYPE_AUDIO))
+        {
+            LOG_ERROR("Failed to find audio stream for input file: %s", file.data());
+            return AVERROR(EINVAL);
+        }
 
         SDL_AudioSpec spec;
         spec.freq = decoder.getAudioSampleRate();

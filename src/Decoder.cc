@@ -15,11 +15,7 @@ namespace fpd
         if (_flag & INIT_VIDEO)
         {
             ec = av_find_best_stream(_avFormatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
-            if (ec < 0)
-            {
-                LOG_WARNING("Could not find video stream in input file");
-            }
-            else
+            if (ec >= 0)
             {
                 _videoStreamIdx = ec;
                 _streamDecoderMap[ec] = nullptr;
@@ -29,11 +25,7 @@ namespace fpd
         if (_flag & INIT_AUDIO)
         {
             ec = av_find_best_stream(_avFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
-            if (ec < 0)
-            {
-                LOG_WARNING("Could not find audio stream in input file");
-            }
-            else
+            if (ec >= 0)
             {
                 _audioStreamIdx = ec;
                 _streamDecoderMap[ec] = nullptr;
@@ -44,6 +36,11 @@ namespace fpd
     Decoder::~Decoder()
     {
         avformat_close_input(&_avFormatCtx);
+    }
+
+    const bool Decoder::hasStream(const AVMediaType type) const
+    {
+        return av_find_best_stream(_avFormatCtx, type, -1, -1, nullptr, 0) >= 0;
     }
 
     const int Decoder::getVideoWidth() const
