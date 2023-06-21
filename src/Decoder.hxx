@@ -65,6 +65,10 @@ namespace fpd
 
         const int getAudioChannels() const;
 
+        const int getAudioSampleRate() const;
+
+        const AVSampleFormat getAudioSampleFormat() const;
+
         const AVRational getStreamTimebase(const AVMediaType type) const;
 
     private:

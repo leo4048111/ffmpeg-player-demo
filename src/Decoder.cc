@@ -167,6 +167,22 @@ namespace fpd
             return 0;
     }
 
+    const int Decoder::getAudioSampleRate() const
+    {
+        if (_audioStreamIdx != -1)
+            return _avFormatCtx->streams[_audioStreamIdx]->codecpar->sample_rate;
+        else
+            return 0;
+    }
+
+    const AVSampleFormat Decoder::getAudioSampleFormat() const
+    {
+        if (_audioStreamIdx != -1)
+            return (const AVSampleFormat)_avFormatCtx->streams[_audioStreamIdx]->codecpar->format;
+        else
+            return AV_SAMPLE_FMT_NONE;
+    }
+
     void Decoder::stop()
     {
         _running = false;
