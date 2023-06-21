@@ -42,7 +42,7 @@ namespace fpd
 #include "FreeSans.inc"
         const int FontSize = 16;
 
-        SDL_RWops *fontMem = SDL_RWFromConstMem(freesans_data, sizeof(freesans_data));
+        SDL_RWops *fontMem = SDL_RWFromConstMem(freesans_data, freesans_data_length);
 
         _font = TTF_OpenFontRW(fontMem, 1, FontSize);
 
@@ -80,6 +80,7 @@ namespace fpd
             _font = nullptr;
         }
 
+        TTF_Quit();
         SDL_Quit();
 
         _sdlInitialized = false;

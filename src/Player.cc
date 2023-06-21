@@ -669,7 +669,9 @@ namespace fpd
                     if (diff > -delay)
                     {
                         delay += diff;
-                    } else {
+                    }
+                    else
+                    {
                         shouldDropFrame = true;
                     }
                 }
@@ -824,6 +826,8 @@ namespace fpd
         auto onWindowLoop = [&]()
         {
             AVFrame *frame;
+            static int frameLost = 0;
+            static int totalFrame = 0;
 
             // render video frame
             {
@@ -837,9 +841,10 @@ namespace fpd
 
                 frame = _videoFrameQueue.front();
                 _videoFrameQueue.pop();
+                totalFrame++;
             }
 
-            static double syncThreshold = 0.01;
+            static double syncThreshold = 0.009;
             static int64_t lastPts = 0;
             static double videoStartTime = -1;
 
@@ -866,8 +871,11 @@ namespace fpd
                     if (diff > -delay)
                     {
                         delay += diff;
-                    } else {
+                    }
+                    else
+                    {
                         shouldDropFrame = true;
+                        frameLost++;
                     }
                 }
 
@@ -886,7 +894,8 @@ namespace fpd
                     Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                     frame->data[1], frame->linesize[1],
                                                     frame->data[2], frame->linesize[2]);
-                    Window::instance().addText(std::to_string(diff), 0, 0, {255, 0, 0, 255});
+                    auto frameInfo = Logger::instance().format("pts: %.5f, diff: %.3fms, elapsed time: %.2fs, loss: %.2f%", pts, diff * 1000, currentTime, (float)frameLost / totalFrame * 100);
+                    Window::instance().addText(frameInfo, 0, 0, {255, 255, 255, 255});
                     Window::instance().render();
                     int64_t renderTime = av_gettime_relative() - beforeRenderTime;
                     av_usleep((unsigned int)(delay * 1000000 - renderTime));
