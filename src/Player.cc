@@ -629,8 +629,7 @@ namespace fpd
         {
             AVFrame *frame;
 
-            static double videoStartTime = av_gettime_relative() / 1000000.0;
-
+            // render video frame
             {
                 std::lock_guard<std::mutex> lock(_videoFrameQueueMutex);
                 if (_videoFrameQueue.empty())
@@ -644,41 +643,54 @@ namespace fpd
                 _videoFrameQueue.pop();
             }
 
-            if (AV_NOPTS_VALUE == frame->pts)
+            static double syncThreshold = 0.01;
+            static int64_t lastPts = 0;
+            static double videoStartTime = -1;
+
+            if (frame->pts == 0)
             {
+                videoStartTime = av_gettime_relative() / 1000000.0;
                 Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                 frame->data[1], frame->linesize[1],
                                                 frame->data[2], frame->linesize[2]);
             }
             else
             {
+                bool shouldDropFrame = false;
                 double currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
                 double pts = frame->pts * (double)videoStreamTimebase.num / videoStreamTimebase.den;
-                double diff = currentTime - pts;
+                double diff = pts - currentTime;
+                double delay = (frame->pts - lastPts) * (double)videoStreamTimebase.num / videoStreamTimebase.den;
+                lastPts = frame->pts;
                 // too late, drop frame and rebase timestamp
-                if (diff > 0.1)
+                if (diff <= -syncThreshold)
                 {
-                    videoStartTime = av_gettime_relative() / 1000000.0;
+                    // videoStartTime = av_gettime_relative() / 1000000.0;
+                    if (diff > -delay)
+                    {
+                        delay += diff;
+                    } else {
+                        shouldDropFrame = true;
+                    }
                 }
-                else
-                {
-                    // too early, wait some proper time
-                    if (diff < 0.0)
-                    {
-                        if (diff < -0.1)
-                            diff = -0.1;
-                        av_usleep((unsigned int)(-diff * 1000000));
-                        currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
-                        diff = currentTime - pts;
-                    }
 
-                    // render frame if not too early or too late
-                    if (abs(diff) <= 0.05)
-                    {
-                        Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
-                                                        frame->data[1], frame->linesize[1],
-                                                        frame->data[2], frame->linesize[2]);
-                    }
+                // too early, wait some proper time
+                if (diff >= syncThreshold)
+                {
+                    delay = std::min(delay * 2, delay + diff);
+                    currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
+                    diff = pts - currentTime;
+                }
+
+                // render frame if not too early or too late
+                if (!shouldDropFrame)
+                {
+                    int64_t beforeRenderTime = av_gettime_relative();
+                    Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
+                                                    frame->data[1], frame->linesize[1],
+                                                    frame->data[2], frame->linesize[2]);
+                    int64_t renderTime = av_gettime_relative() - beforeRenderTime;
+                    av_usleep((unsigned int)(delay * 1000000 - renderTime));
                 }
             }
 
