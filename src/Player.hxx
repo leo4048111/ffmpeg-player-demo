@@ -53,8 +53,6 @@ namespace fpd
 
         // int dumpVideoAndAudioStream(const std::string_view &file);
 
-        // int lameDumpVideoAndAudioStream(const std::string_view &file);  // lame implementation, just for test
-
         int dumpH264AndAACFromVideoFile(const std::string_view &file);
 
         int dumpYUVAndPlayVideoStream(const std::string_view &file);
@@ -65,8 +63,6 @@ namespace fpd
 
     private:
         std::queue<AVFrame*> _videoFrameQueue;
-        std::queue<AVFrame*> _audioFrameQueue;
         std::mutex _videoFrameQueueMutex;
-        std::mutex _audioFrameQueueMutex;
     };
 }

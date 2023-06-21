@@ -719,13 +719,9 @@ namespace fpd
                     for (int ch = 0; ch < spec.channels; ++ch)
                     {
                         audioPcmOutFile.write((const char *)frame->data[ch] + i * bytesPerSample, bytesPerSample);
+                        SDL_QueueAudio(audioDeviceId, frame->data[ch] + i * bytesPerSample, bytesPerSample);
                     }
                 }
-
-                AVFrame *tmp = av_frame_alloc();
-                av_frame_ref(tmp, frame);
-                std::lock_guard<std::mutex> lock(_audioFrameQueueMutex);
-                _audioFrameQueue.push(tmp);
             }
         };
 
@@ -738,29 +734,7 @@ namespace fpd
 
         auto onWindowLoop = [&]()
         {
-            AVFrame *frame;
 
-            {
-                std::lock_guard<std::mutex> lock(_audioFrameQueueMutex);
-                if (_audioFrameQueue.empty())
-                    return;
-                if (_audioFrameQueue.size() > 10)
-                    decoder.pause();
-                else if (decoder.isPaused())
-                    decoder.resume();
-
-                frame = _audioFrameQueue.front();
-                _audioFrameQueue.pop();
-            }
-
-            int bytesPerSample = av_get_bytes_per_sample((AVSampleFormat)frame->format);
-            for (int i = 0; i < frame->nb_samples; ++i)
-            {
-                for (int ch = 0; ch < spec.channels; ++ch)
-                {
-                    SDL_QueueAudio(audioDeviceId, (const char *)frame->data[ch] + i * bytesPerSample, bytesPerSample);
-                }
-            }
         };
 
         decoder.start(onReceiveFrame, onDecoderExit);
@@ -810,10 +784,14 @@ namespace fpd
             }
             else if (type == AVMEDIA_TYPE_AUDIO)
             {
-                AVFrame *tmp = av_frame_alloc();
-                av_frame_ref(tmp, frame);
-                std::lock_guard<std::mutex> lock(_audioFrameQueueMutex);
-                _audioFrameQueue.push(tmp);
+                int bytesPerSample = av_get_bytes_per_sample((AVSampleFormat)frame->format);
+                for (int i = 0; i < frame->nb_samples; ++i)
+                {
+                    for (int ch = 0; ch < spec.channels; ++ch)
+                    {
+                        SDL_QueueAudio(audioDeviceId, (const char *)frame->data[ch] + i * bytesPerSample, bytesPerSample);
+                    }
+                }
             }
         };
 
@@ -827,29 +805,6 @@ namespace fpd
         auto onWindowLoop = [&]()
         {
             AVFrame *frame;
-
-            // play audio frame
-            for (int i = 0; i < 5; i++)
-            {
-                {
-                    std::lock_guard<std::mutex> lock(_audioFrameQueueMutex);
-                    if (_audioFrameQueue.empty())
-                        break;
-
-                    frame = _audioFrameQueue.front();
-                    _audioFrameQueue.pop();
-                }
-
-                int bytesPerSample = av_get_bytes_per_sample((AVSampleFormat)frame->format);
-                for (int i = 0; i < frame->nb_samples; ++i)
-                {
-                    for (int ch = 0; ch < spec.channels; ++ch)
-                    {
-                        SDL_QueueAudio(audioDeviceId, (const char *)frame->data[ch] + i * bytesPerSample, bytesPerSample);
-                    }
-                }
-                av_frame_unref(frame);
-            }
 
             static double videoStartTime = av_gettime_relative() / 1000000.0;
 
