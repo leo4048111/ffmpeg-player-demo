@@ -631,8 +631,12 @@ namespace fpd
                         decoder.pause();
                     else if (decoder.isPaused())
                         decoder.resume();
-                    frame = _videoFrameQueue.front();
-                    _videoFrameQueue.pop();
+
+                    if (!_videoFrameQueue.empty())
+                    {
+                        frame = _videoFrameQueue.front();
+                        _videoFrameQueue.pop();
+                    }
                 }
 
                 if (AV_NOPTS_VALUE == frame->pts)
@@ -711,12 +715,13 @@ namespace fpd
                                 PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_WIDTH);
 
         SDL_AudioDeviceID audioDeviceId;
-        if((ec = Window::instance().openAudio(spec)) < 2)
+        if ((ec = Window::instance().openAudio(spec)) < 2)
         {
             Window::instance().destroy();
             return ec;
         }
-        else audioDeviceId = ec;
+        else
+            audioDeviceId = ec;
 
         std::function<void(const AVMediaType type, AVFrame *frame)> onReceiveFrame = [&](const AVMediaType type, AVFrame *frame)
         {
@@ -743,6 +748,11 @@ namespace fpd
             LOG_INFO("Dumped pcm data to file: %s", audioPcmOutFilename.c_str());
 
             audioPcmOutFile.close();
+        };
+
+        auto onWindowLoop = [&]()
+        {
+            AVFrame *frame;
         };
 
         decoder.start(onReceiveFrame, onDecoderExit);
