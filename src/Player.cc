@@ -709,7 +709,7 @@ namespace fpd
 
         Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
                                 decoder.getVideoWidth(), decoder.getVideoHeight());
-                                
+
         decoder.start(onReceiveFrame, onDecoderExit);
         Window::instance().loop(onWindowLoop);
         Window::instance().destroy();
@@ -930,8 +930,6 @@ namespace fpd
         Window::instance().loop(onWindowLoop);
         Window::instance().destroy();
         decoder.stop();
-        return ec;
-
         return ec;
     }
 }
