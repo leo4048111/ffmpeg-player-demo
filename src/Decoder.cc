@@ -1,8 +1,6 @@
 #include "Decoder.hxx"
 #include "Logger.hxx"
 
-#include "Spinner.hxx"
-
 namespace fpd
 {
     Decoder::Decoder(int flag, const std::string_view &file) : _flag(flag)
@@ -119,8 +117,6 @@ namespace fpd
         auto x = [=]()
         {
             AVPacket pkt;
-            auto x = std::make_unique<spinner::spinner>(41);
-            x->start();
 
             while (_running)
             {
@@ -150,8 +146,6 @@ namespace fpd
 
                 av_packet_unref(&pkt);
             }
-
-            x->stop();
             onDecoderExit(AVMEDIA_TYPE_UNKNOWN, nullptr);
         };
 
