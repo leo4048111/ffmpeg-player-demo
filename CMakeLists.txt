@@ -37,4 +37,5 @@ target_link_libraries(ffmpeg_player_demo
         # SDL 
         SDL2
         SDL2main
+        SDL2_ttf
         )

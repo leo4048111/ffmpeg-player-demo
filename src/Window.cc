@@ -12,6 +12,7 @@ namespace fpd
         int ec = 0;
 
         SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
+        TTF_Init();
 
         _window = SDL_CreateWindow("ffmpeg player demo",
                                    SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -36,6 +37,18 @@ namespace fpd
         _windowRect.h = windowHeight;
         _textureRect.w = textureWidth;
         _textureRect.h = textureHeight;
+
+        // init mem font
+#include "FreeSans.inc"
+        const int FontSize = 16;
+
+        SDL_RWops *fontMem = SDL_RWFromConstMem(freesans_data, sizeof(freesans_data));
+
+        _font = TTF_OpenFontRW(fontMem, 1, FontSize);
+
+        if (!_font)
+            LOG_WARNING("Failed to load font from memory buffer, text render may not be working, error: %s", SDL_GetError());
+        
         _sdlInitialized = true;
 
         return ec;
@@ -59,6 +72,12 @@ namespace fpd
         {
             SDL_DestroyWindow(_window);
             _window = nullptr;
+        }
+
+        if (_font != nullptr)
+        {
+            TTF_CloseFont(_font);
+            _font = nullptr;
         }
 
         SDL_Quit();
@@ -106,13 +125,37 @@ namespace fpd
 
         SDL_RenderClear(_renderer);
         SDL_RenderCopy(_renderer, _texture, &_textureRect, &_windowRect);
+    }
+
+    void Window::addText(const std::string &text, const int x, const int y, const SDL_Color &color)
+    {
+        if (!_sdlInitialized || !_font)
+            return;
+
+        SDL_Surface *surface = TTF_RenderText_Solid(_font, text.c_str(), color);
+        SDL_Texture *texture = SDL_CreateTextureFromSurface(_renderer, surface);
+
+        SDL_Rect rect;
+        rect.x = x;
+        rect.y = y;
+        rect.w = surface->w;
+        rect.h = surface->h;
+
+        SDL_RenderCopy(_renderer, texture, nullptr, &rect);
+
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+    }
+
+    void Window::render()
+    {
         SDL_RenderPresent(_renderer);
     }
 
     int Window::openAudio(SDL_AudioSpec spec)
     {
         int ec = 0;
-        if((ec = SDL_OpenAudioDevice(nullptr, 0, &spec, nullptr, SDL_AUDIO_ALLOW_ANY_CHANGE)) < 2)
+        if ((ec = SDL_OpenAudioDevice(nullptr, 0, &spec, nullptr, SDL_AUDIO_ALLOW_ANY_CHANGE)) < 2)
             LOG_ERROR("Failed to open audio device, error: %s", SDL_GetError());
 
         return ec;

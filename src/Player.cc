@@ -886,6 +886,8 @@ namespace fpd
                     Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                     frame->data[1], frame->linesize[1],
                                                     frame->data[2], frame->linesize[2]);
+                    Window::instance().addText(std::to_string(diff), 0, 0, {255, 0, 0, 255});
+                    Window::instance().render();
                     int64_t renderTime = av_gettime_relative() - beforeRenderTime;
                     av_usleep((unsigned int)(delay * 1000000 - renderTime));
                 }

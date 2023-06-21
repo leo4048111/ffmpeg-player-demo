@@ -44,6 +44,10 @@ namespace fpd
                           const Uint8 *udata, const int usize,
                           const Uint8 *vdata, const int vsize);
 
+        void addText(const std::string &text, const int x, const int y, const SDL_Color &color);
+
+        void render();
+
         void resize(const int width, const int height);
 
         int openAudio(SDL_AudioSpec spec);
@@ -54,6 +58,7 @@ namespace fpd
         SDL_Window *_window{nullptr};
         SDL_Renderer *_renderer{nullptr};
         SDL_Texture *_texture{nullptr};
+        TTF_Font *_font{nullptr};
         SDL_Rect _textureRect;
         SDL_Rect _windowRect;
         bool _sdlInitialized{false};
