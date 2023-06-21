@@ -48,7 +48,7 @@ namespace fpd
 
         if (!_font)
             LOG_WARNING("Failed to load font from memory buffer, text render may not be working, error: %s", SDL_GetError());
-        
+
         _sdlInitialized = true;
 
         return ec;
@@ -158,7 +158,9 @@ namespace fpd
         int ec = 0;
         if ((ec = SDL_OpenAudioDevice(nullptr, 0, &spec, nullptr, SDL_AUDIO_ALLOW_ANY_CHANGE)) < 2)
             LOG_ERROR("Failed to open audio device, error: %s", SDL_GetError());
-
+        else
+            SDL_PauseAudioDevice(ec, 0);
+            
         return ec;
     }
 
