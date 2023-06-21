@@ -125,7 +125,39 @@ namespace fpd
                              vdata, vsize);
 
         SDL_RenderClear(_renderer);
-        SDL_RenderCopy(_renderer, _texture, &_textureRect, &_windowRect);
+        double ratio = _textureRect.w / (double)_textureRect.h;
+        SDL_Rect tmpRect;
+        if (_textureRect.h > _textureRect.w)
+        {
+            tmpRect.h = _windowRect.h;
+            tmpRect.w = ratio * tmpRect.h;
+            tmpRect.x = (_windowRect.w - tmpRect.w) / 2;
+            tmpRect.y = 0;
+        }
+        else if(_textureRect.h < _textureRect.w)
+        {
+            tmpRect.w = _windowRect.w;
+            tmpRect.h = tmpRect.w / ratio;
+            tmpRect.x = 0;
+            tmpRect.y = (_windowRect.h - tmpRect.h) / 2;
+        }
+        else {
+            if(_windowRect.h < _windowRect.w)
+            {
+                tmpRect.h = _windowRect.h;
+                tmpRect.w = tmpRect.h * ratio;
+                tmpRect.x = (_windowRect.w - tmpRect.w) / 2;
+                tmpRect.y = 0;
+            } 
+            else {
+                tmpRect.w = _windowRect.w;
+                tmpRect.h = tmpRect.w / ratio;
+                tmpRect.x = 0;
+                tmpRect.y = (_windowRect.h - tmpRect.h) / 2;
+            }
+        }
+
+        SDL_RenderCopy(_renderer, _texture, &_textureRect, &tmpRect);
     }
 
     void Window::addText(const std::string &text, const int x, const int y, const SDL_Color &color)
@@ -160,7 +192,7 @@ namespace fpd
             LOG_ERROR("Failed to open audio device, error: %s", SDL_GetError());
         else
             SDL_PauseAudioDevice(ec, 0);
-            
+
         return ec;
     }
 
