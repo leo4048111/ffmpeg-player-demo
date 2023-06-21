@@ -623,62 +623,58 @@ namespace fpd
 
             static double videoStartTime = av_gettime_relative() / 1000000.0;
 
-            if (!_videoFrameQueue.empty())
             {
-                {
-                    std::lock_guard<std::mutex> lock(_videoFrameQueueMutex);
-                    if (_videoFrameQueue.size() > 10)
-                        decoder.pause();
-                    else if (decoder.isPaused())
-                        decoder.resume();
+                std::lock_guard<std::mutex> lock(_videoFrameQueueMutex);
+                if (_videoFrameQueue.empty())
+                    return;
+                if (_videoFrameQueue.size() > 10)
+                    decoder.pause();
+                else if (decoder.isPaused())
+                    decoder.resume();
 
-                    if (!_videoFrameQueue.empty())
-                    {
-                        frame = _videoFrameQueue.front();
-                        _videoFrameQueue.pop();
-                    }
-                }
+                frame = _videoFrameQueue.front();
+                _videoFrameQueue.pop();
+            }
 
-                if (AV_NOPTS_VALUE == frame->pts)
+            if (AV_NOPTS_VALUE == frame->pts)
+            {
+                Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
+                                                frame->data[1], frame->linesize[1],
+                                                frame->data[2], frame->linesize[2]);
+            }
+            else
+            {
+                double currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
+                double pts = frame->pts * (double)videoStreamTimebase.num / videoStreamTimebase.den;
+                double diff = currentTime - pts;
+                // too late, drop frame and rebase timestamp
+                if (diff > 0.1)
                 {
-                    Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
-                                                    frame->data[1], frame->linesize[1],
-                                                    frame->data[2], frame->linesize[2]);
+                    videoStartTime = av_gettime_relative() / 1000000.0;
                 }
                 else
                 {
-                    double currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
-                    double pts = frame->pts * (double)videoStreamTimebase.num / videoStreamTimebase.den;
-                    double diff = currentTime - pts;
-                    // too late, drop frame and rebase timestamp
-                    if (diff > 0.1)
+                    // too early, wait some proper time
+                    if (diff < 0.0)
                     {
-                        videoStartTime = av_gettime_relative() / 1000000.0;
+                        if (diff < -0.1)
+                            diff = -0.1;
+                        av_usleep((unsigned int)(-diff * 1000000));
+                        currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
+                        diff = currentTime - pts;
                     }
-                    else
-                    {
-                        // too early, wait some proper time
-                        if (diff < 0.0)
-                        {
-                            if (diff < -0.1)
-                                diff = -0.1;
-                            av_usleep((unsigned int)(-diff * 1000000));
-                            currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
-                            diff = currentTime - pts;
-                        }
 
-                        // render frame if not too early or too late
-                        if (abs(diff) <= 0.05)
-                        {
-                            Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
-                                                            frame->data[1], frame->linesize[1],
-                                                            frame->data[2], frame->linesize[2]);
-                        }
+                    // render frame if not too early or too late
+                    if (abs(diff) <= 0.05)
+                    {
+                        Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
+                                                        frame->data[1], frame->linesize[1],
+                                                        frame->data[2], frame->linesize[2]);
                     }
                 }
-
-                av_frame_unref(frame);
             }
+
+            av_frame_unref(frame);
         };
 
         decoder.start(onReceiveFrame, onDecoderExit);
@@ -707,21 +703,11 @@ namespace fpd
         spec.format = ffAudioFmt2SdlAudioFmt(decoder.getAudioSampleFormat());
         spec.channels = decoder.getAudioChannels();
         spec.silence = 0;
-        spec.samples = 1024;
+        spec.samples = 4096;
         spec.callback = nullptr;
         spec.userdata = nullptr;
 
-        Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
-                                PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_WIDTH);
-
         SDL_AudioDeviceID audioDeviceId;
-        if ((ec = Window::instance().openAudio(spec)) < 2)
-        {
-            Window::instance().destroy();
-            return ec;
-        }
-        else
-            audioDeviceId = ec;
 
         std::function<void(const AVMediaType type, AVFrame *frame)> onReceiveFrame = [&](const AVMediaType type, AVFrame *frame)
         {
@@ -753,10 +739,46 @@ namespace fpd
         auto onWindowLoop = [&]()
         {
             AVFrame *frame;
+
+            {
+                std::lock_guard<std::mutex> lock(_audioFrameQueueMutex);
+                if (_audioFrameQueue.empty())
+                    return;
+                if (_audioFrameQueue.size() > 10)
+                    decoder.pause();
+                else if (decoder.isPaused())
+                    decoder.resume();
+
+                frame = _audioFrameQueue.front();
+                _audioFrameQueue.pop();
+            }
+
+            int bytesPerSample = av_get_bytes_per_sample((AVSampleFormat)frame->format);
+            for (int i = 0; i < frame->nb_samples; ++i)
+            {
+                for (int ch = 0; ch < spec.channels; ++ch)
+                {
+                    SDL_QueueAudio(audioDeviceId, (const char *)frame->data[ch] + i * bytesPerSample, bytesPerSample);
+                }
+            }
         };
 
         decoder.start(onReceiveFrame, onDecoderExit);
+        Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
+                                decoder.getVideoWidth(), decoder.getVideoHeight());
 
+        if ((ec = Window::instance().openAudio(spec)) < 2)
+        {
+            Window::instance().destroy();
+            return ec;
+        }
+        else
+            audioDeviceId = ec;
+        SDL_PauseAudioDevice(audioDeviceId, 0);
+        Window::instance().loop(onWindowLoop);
+        Window::instance().closeAudio();
+        Window::instance().destroy();
+        decoder.stop();
         return ec;
     }
 }
