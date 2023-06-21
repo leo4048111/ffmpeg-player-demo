@@ -10,7 +10,6 @@ extern "C"
 #include "libavutil/imgutils.h"
 #include "libavutil/time.h"
 #include "libavutil/intreadwrite.h"
-#include "SDL2/SDL.h"
 };
 #else
 // Linux, Mac OS X...
@@ -24,7 +23,6 @@ extern "C"
 #include <libavutil/imgutils.h>
 #include <libavutil/time.h>
 #include <libavutil/intreadwrite.h>
-#include <SDL2/SDL.h>
 #ifdef __cplusplus
 };
 #endif
