@@ -781,4 +781,11 @@ namespace fpd
         decoder.stop();
         return ec;
     }
+
+    int Player::play(const std::string_view &file)
+    {
+        int ec = 0;
+        
+        return ec;
+    }
 }
