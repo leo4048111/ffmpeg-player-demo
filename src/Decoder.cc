@@ -108,6 +108,8 @@ namespace fpd
                     continue;
                 }
             }
+
+            _streamDecoderMap[streamIdx]->get()->time_base = stream->time_base;
         }
 
         // start decode thread

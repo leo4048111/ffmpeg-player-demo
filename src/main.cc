@@ -86,6 +86,13 @@ int main(int argc, char **argv)
             if ((ec = player.dumpPCMAndPlayAudioStream(f)))
                 return ec;
         }
+    case 4:
+        for (auto &f : fpd::Options::instance()._files)
+        {
+            LOG_INFO("Playing: %s", f.c_str());
+            if ((ec = player.play(f)))
+                return ec;
+        }
     default:
         break;
     }
