@@ -1,5 +1,5 @@
 ## ffmpeg_player_demo
-
+Lame ffmpeg player demo with ffmpeg/SDL2, for learning ffmpeg.
 ### Features
 
 + **Get stream infos with `av_dump_format`(default running mode 0)**
