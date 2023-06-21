@@ -768,4 +768,53 @@ namespace fpd
         decoder.stop();
         return ec;
     }
+
+    int Player::dumpPCMAndPlayAudioStream(const std::string_view &file)
+    {
+        int ec = 0;
+
+        auto filenameNoExt = Utils::getFilenameNoExt(file);
+        auto audioPcmOutFilename = filenameNoExt + ".pcm";
+
+        std::ofstream audioPcmOutFile(audioPcmOutFilename, std::ios::binary);
+
+        Decoder decoder(Decoder::INIT_AUDIO, file);
+
+        const int audioChannels = decoder.getAudioChannels();
+
+        std::function<void(const AVMediaType type, AVFrame *frame)> onReceiveFrame = [&](const AVMediaType type, AVFrame *frame)
+        {
+            if (type == AVMEDIA_TYPE_AUDIO)
+            {
+                int bytesPerSample = av_get_bytes_per_sample((AVSampleFormat)frame->format);
+                for(int i = 0; i < frame->nb_samples; ++i)
+                {
+                    for(int ch = 0; ch < audioChannels; ++ch)
+                    {
+                        audioPcmOutFile.write((const char *)frame->data[ch] + i * bytesPerSample, bytesPerSample);
+                    }
+                }
+
+                AVFrame *tmp = av_frame_alloc();
+                av_frame_ref(tmp, frame);
+                std::lock_guard<std::mutex> lock(_audioFrameQueueMutex);
+                _audioFrameQueue.push(tmp);
+            }
+        };
+
+        
+
+        std::function<void(const AVMediaType type, AVFrame *frame)> onDecoderExit = [&](const AVMediaType type, AVFrame *frame)
+        {
+            LOG_INFO("Dumped pcm data to file: %s", audioPcmOutFilename.c_str());
+
+            audioPcmOutFile.close();
+        };
+
+        decoder.start(onReceiveFrame, onDecoderExit);
+
+        
+
+        return ec;
+    }
 }

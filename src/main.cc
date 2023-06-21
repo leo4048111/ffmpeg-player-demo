@@ -78,6 +78,14 @@ int main(int argc, char **argv)
             if ((ec = player.dumpYUVAndPlayVideoStream(f)))
                 return ec;
         }
+        break;
+    case 3:
+        for (auto &f : fpd::Options::instance()._files)
+        {
+            LOG_INFO("Dump audio pcm data for file: %s", f.c_str());
+            if ((ec = player.dumpPCMAndPlayAudioStream(f)))
+                return ec;
+        }
     default:
         break;
     }

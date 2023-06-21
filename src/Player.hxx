@@ -59,8 +59,12 @@ namespace fpd
 
         int dumpYUVAndPlayVideoStream(const std::string_view &file);
 
+        int dumpPCMAndPlayAudioStream(const std::string_view &file);
+
     private:
         std::queue<AVFrame*> _videoFrameQueue;
+        std::queue<AVFrame*> _audioFrameQueue;
         std::mutex _videoFrameQueueMutex;
+        std::mutex _audioFrameQueueMutex;
     };
 }

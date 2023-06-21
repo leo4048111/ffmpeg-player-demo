@@ -63,6 +63,8 @@ namespace fpd
         const int getVideoWidth() const;
         const int getVideoHeight() const;
 
+        const int getAudioChannels() const;
+
         const AVRational getStreamTimebase(const AVMediaType type) const;
 
     private:

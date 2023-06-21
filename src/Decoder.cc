@@ -159,6 +159,14 @@ namespace fpd
         return ec;
     }
 
+    const int Decoder::getAudioChannels() const
+    {
+        if (_audioStreamIdx != -1)
+            return _avFormatCtx->streams[_audioStreamIdx]->codecpar->ch_layout.nb_channels;
+        else
+            return 0;
+    }
+
     void Decoder::stop()
     {
         _running = false;
