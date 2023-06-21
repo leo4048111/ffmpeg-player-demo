@@ -629,6 +629,11 @@ namespace fpd
 
         AVRational videoStreamTimebase = decoder.getStreamTimebase(AVMEDIA_TYPE_VIDEO);
 
+        int64_t firstPts = -1;
+        bool isFirstEntry = true;
+        int64_t lastPts = 0;
+        double videoStartTime = -1;
+
         auto onWindowLoop = [&]()
         {
             AVFrame *frame;
@@ -651,11 +656,12 @@ namespace fpd
             }
 
             static double syncThreshold = 0.009;
-            static int64_t lastPts = 0;
-            static double videoStartTime = -1;
 
-            if (frame->pts == 0)
+            if (isFirstEntry)
             {
+                isFirstEntry = false;
+                firstPts = frame->pts;
+                lastPts = frame->pts;
                 videoStartTime = av_gettime_relative() / 1000000.0;
                 Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                 frame->data[1], frame->linesize[1],
@@ -666,7 +672,7 @@ namespace fpd
             {
                 bool shouldDropFrame = false;
                 double currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
-                double pts = frame->pts * (double)videoStreamTimebase.num / videoStreamTimebase.den;
+                double pts = (frame->pts - firstPts) * (double)videoStreamTimebase.num / videoStreamTimebase.den;
                 double diff = pts - currentTime;
                 double delay = (frame->pts - lastPts) * (double)videoStreamTimebase.num / videoStreamTimebase.den;
                 lastPts = frame->pts;
@@ -854,6 +860,11 @@ namespace fpd
 
         AVRational videoStreamTimebase = decoder.getStreamTimebase(AVMEDIA_TYPE_VIDEO);
 
+        int64_t firstPts = -1;
+        bool isFirstEntry = true;
+        int64_t lastPts = 0;
+        double videoStartTime = -1;
+
         auto onWindowLoop = [&]()
         {
             AVFrame *frame;
@@ -876,11 +887,12 @@ namespace fpd
             }
 
             static double syncThreshold = 0.009;
-            static int64_t lastPts = 0;
-            static double videoStartTime = -1;
 
-            if (frame->pts == 0)
+            if (isFirstEntry)
             {
+                isFirstEntry = false;
+                lastPts = frame->pts;
+                firstPts = frame->pts;
                 videoStartTime = av_gettime_relative() / 1000000.0;
                 Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                 frame->data[1], frame->linesize[1],
