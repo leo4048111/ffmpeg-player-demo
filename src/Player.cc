@@ -695,7 +695,6 @@ namespace fpd
                 if (diff >= syncThreshold)
                 {
                     delay = std::min(delay * 2, delay + diff);
-                    currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
                     diff = pts - currentTime;
                 }
 
