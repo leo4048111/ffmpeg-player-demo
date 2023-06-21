@@ -251,6 +251,10 @@ namespace fpd
             return "dump H.264/265 and acc streams from mp4/vls file";
         case 2:
             return "dump yuv data of video stream from mp4/vls file and play with SDL2";
+        case 3:
+            return "dump pcm data of audio stream from mp4/vls file and play with SDL2";
+        case 4:
+            return "play mp4/vls file with SDL2";
         default:
             return "unknown mode";
         }
@@ -732,8 +736,7 @@ namespace fpd
             audioPcmOutFile.close();
         };
 
-        auto onWindowLoop = [&]()
-        {
+        auto onWindowLoop = [&]() {
 
         };
 
@@ -806,8 +809,6 @@ namespace fpd
         {
             AVFrame *frame;
 
-            static double videoStartTime = av_gettime_relative() / 1000000.0;
-
             // render video frame
             {
                 std::lock_guard<std::mutex> lock(_videoFrameQueueMutex);
@@ -822,6 +823,9 @@ namespace fpd
                 _videoFrameQueue.pop();
             }
 
+            static double videoStartTime = av_gettime_relative() / 1000000.0;
+            static double syncThreshold = 0.01;
+
             if (AV_NOPTS_VALUE == frame->pts)
             {
                 Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
@@ -832,26 +836,26 @@ namespace fpd
             {
                 double currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
                 double pts = frame->pts * (double)videoStreamTimebase.num / videoStreamTimebase.den;
-                double diff = currentTime - pts;
+                double diff = pts - currentTime;
                 // too late, drop frame and rebase timestamp
-                if (diff > 0.1)
+                if (diff <= -syncThreshold)
                 {
                     videoStartTime = av_gettime_relative() / 1000000.0;
                 }
                 else
                 {
                     // too early, wait some proper time
-                    if (diff < 0.0)
+                    if (diff > 0.0)
                     {
-                        if (diff < -0.1)
-                            diff = -0.1;
-                        av_usleep((unsigned int)(-diff * 1000000));
+                        if (diff > syncThreshold)
+                            diff = syncThreshold;
+                        av_usleep((unsigned int)(diff * 1000000));
                         currentTime = av_gettime_relative() / 1000000.0 - videoStartTime;
-                        diff = currentTime - pts;
+                        diff = pts - currentTime;
                     }
 
                     // render frame if not too early or too late
-                    if (abs(diff) <= 0.05)
+                    if (abs(diff) <= syncThreshold)
                     {
                         Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                         frame->data[1], frame->linesize[1],
