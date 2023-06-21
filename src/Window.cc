@@ -120,6 +120,6 @@ namespace fpd
 
     void Window::closeAudio()
     {
-        SDL_CloseAudio();
+        SDL_CloseAudioDevice(1);
     }
 }
