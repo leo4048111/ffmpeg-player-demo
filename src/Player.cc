@@ -11,6 +11,39 @@
 
 namespace
 {
+    const SDL_AudioFormat ffAudioFmt2SdlAudioFmt(const AVSampleFormat fmt)
+    {
+        switch (fmt)
+        {
+        case AV_SAMPLE_FMT_NONE:
+        case AV_SAMPLE_FMT_U8:
+        case AV_SAMPLE_FMT_U8P:
+            return AUDIO_U8;
+
+        case AV_SAMPLE_FMT_S16:
+        case AV_SAMPLE_FMT_S16P:
+            return AUDIO_S16SYS;
+
+        case AV_SAMPLE_FMT_S32:
+        case AV_SAMPLE_FMT_S32P:
+            return AUDIO_S32SYS;
+
+        case AV_SAMPLE_FMT_FLT:
+        case AV_SAMPLE_FMT_FLTP:
+            return AUDIO_F32SYS;
+
+        // SDL doesn't support double type or 64 bits, so we'll return an error for these
+        case AV_SAMPLE_FMT_DBL:
+        case AV_SAMPLE_FMT_DBLP:
+        case AV_SAMPLE_FMT_S64:
+        case AV_SAMPLE_FMT_S64P:
+            return -1;
+
+        default:
+            return -1;
+        }
+    }
+
     int h264ExtradataToAnnexb(const uint8_t *codec_extradata, const int codec_extradata_size, AVPacket *out_extradata, int padding)
     {
         uint16_t unit_size = 0;
@@ -695,12 +728,6 @@ namespace fpd
             videoYuvOutFile.close();
         };
 
-        // Window::instance().init(3000, 2000);
-        Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
-                                decoder.getVideoWidth(), decoder.getVideoHeight());
-
-        decoder.start(onReceiveFrame, onDecoderExit);
-
         AVRational videoStreamTimebase = decoder.getStreamTimebase(AVMEDIA_TYPE_VIDEO);
 
         auto onWindowLoop = [&]()
@@ -763,6 +790,10 @@ namespace fpd
             }
         };
 
+        decoder.start(onReceiveFrame, onDecoderExit);
+
+        Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
+                                decoder.getVideoWidth(), decoder.getVideoHeight());
         Window::instance().loop(onWindowLoop);
         Window::instance().destroy();
         decoder.stop();
@@ -780,16 +811,34 @@ namespace fpd
 
         Decoder decoder(Decoder::INIT_AUDIO, file);
 
-        const int audioChannels = decoder.getAudioChannels();
+        SDL_AudioSpec spec;
+        spec.freq = decoder.getAudioSampleRate();
+        spec.format = ffAudioFmt2SdlAudioFmt(decoder.getAudioSampleFormat());
+        spec.channels = decoder.getAudioChannels();
+        spec.silence = 0;
+        spec.samples = 1024;
+        spec.callback = nullptr;
+        spec.userdata = nullptr;
+
+        Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
+                                PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_WIDTH);
+
+        SDL_AudioDeviceID audioDeviceId;
+        if((ec = Window::instance().openAudio(spec)) < 2)
+        {
+            Window::instance().destroy();
+            return ec;
+        }
+        else audioDeviceId = ec;
 
         std::function<void(const AVMediaType type, AVFrame *frame)> onReceiveFrame = [&](const AVMediaType type, AVFrame *frame)
         {
             if (type == AVMEDIA_TYPE_AUDIO)
             {
                 int bytesPerSample = av_get_bytes_per_sample((AVSampleFormat)frame->format);
-                for(int i = 0; i < frame->nb_samples; ++i)
+                for (int i = 0; i < frame->nb_samples; ++i)
                 {
-                    for(int ch = 0; ch < audioChannels; ++ch)
+                    for (int ch = 0; ch < spec.channels; ++ch)
                     {
                         audioPcmOutFile.write((const char *)frame->data[ch] + i * bytesPerSample, bytesPerSample);
                     }
@@ -802,8 +851,6 @@ namespace fpd
             }
         };
 
-        
-
         std::function<void(const AVMediaType type, AVFrame *frame)> onDecoderExit = [&](const AVMediaType type, AVFrame *frame)
         {
             LOG_INFO("Dumped pcm data to file: %s", audioPcmOutFilename.c_str());
@@ -812,8 +859,6 @@ namespace fpd
         };
 
         decoder.start(onReceiveFrame, onDecoderExit);
-
-        
 
         return ec;
     }
