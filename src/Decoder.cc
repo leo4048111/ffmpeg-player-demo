@@ -107,7 +107,7 @@ namespace fpd
                 }
             }
 
-            _streamDecoderMap[streamIdx]->get()->time_base = stream->time_base;
+            _streamDecoderMap[streamIdx]->get()->pkt_timebase = stream->time_base;
         }
 
         // start decode thread
