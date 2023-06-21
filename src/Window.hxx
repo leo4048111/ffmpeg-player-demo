@@ -44,6 +44,10 @@ namespace fpd
 
         void resize(const int width, const int height);
 
+        int openAudio(SDL_AudioSpec spec);
+
+        void closeAudio();
+
     private:
         SDL_Window *_window{nullptr};
         SDL_Renderer *_renderer{nullptr};

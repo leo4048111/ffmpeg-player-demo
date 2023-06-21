@@ -108,4 +108,18 @@ namespace fpd
         SDL_RenderCopy(_renderer, _texture, &_textureRect, &_windowRect);
         SDL_RenderPresent(_renderer);
     }
+
+    int Window::openAudio(SDL_AudioSpec spec)
+    {
+        int ec = 0;
+        if((ec = SDL_OpenAudioDevice(nullptr, 0, &spec, nullptr, SDL_AUDIO_ALLOW_ANY_CHANGE)) < 2)
+            LOG_ERROR("Failed to open audio device, error: %s", SDL_GetError());
+
+        return ec;
+    }
+
+    void Window::closeAudio()
+    {
+        SDL_CloseAudio();
+    }
 }
