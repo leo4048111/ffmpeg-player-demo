@@ -617,10 +617,9 @@ namespace fpd
 
         std::function<void(const AVMediaType type, AVFrame *frame)> onDecoderExit = [&](const AVMediaType type, AVFrame *frame)
         {
-            LOG_INFO("Dumped yuv data to file: %s", videoYuvOutFilename.c_str());
-
-            videoYuvOutFile.close();
             spin->stop();
+            LOG_INFO("Dumped yuv data to file: %s", videoYuvOutFilename.c_str());
+            videoYuvOutFile.close();
         };
 
         AVRational videoStreamTimebase = decoder.getStreamTimebase(AVMEDIA_TYPE_VIDEO);
@@ -628,6 +627,8 @@ namespace fpd
         auto onWindowLoop = [&]()
         {
             AVFrame *frame;
+            static int frameLost = 0;
+            static int totalFrame = 0;
 
             // render video frame
             {
@@ -641,9 +642,10 @@ namespace fpd
 
                 frame = _videoFrameQueue.front();
                 _videoFrameQueue.pop();
+                totalFrame++;
             }
 
-            static double syncThreshold = 0.01;
+            static double syncThreshold = 0.009;
             static int64_t lastPts = 0;
             static double videoStartTime = -1;
 
@@ -653,6 +655,7 @@ namespace fpd
                 Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                 frame->data[1], frame->linesize[1],
                                                 frame->data[2], frame->linesize[2]);
+                Window::instance().render();
             }
             else
             {
@@ -673,6 +676,7 @@ namespace fpd
                     else
                     {
                         shouldDropFrame = true;
+                        frameLost++;
                     }
                 }
 
@@ -691,6 +695,9 @@ namespace fpd
                     Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                     frame->data[1], frame->linesize[1],
                                                     frame->data[2], frame->linesize[2]);
+                    auto frameInfo = Logger::instance().format("pts: %.5f, diff: %.3fms, elapsed time: %.2fs, loss: %.2f%", pts, diff * 1000, currentTime, (float)frameLost / totalFrame * 100);
+                    Window::instance().addText(frameInfo, 0, 0, {255, 255, 255, 255});
+                    Window::instance().render();
                     int64_t renderTime = av_gettime_relative() - beforeRenderTime;
                     av_usleep((unsigned int)(delay * 1000000 - renderTime));
                 }
@@ -740,17 +747,20 @@ namespace fpd
                 {
                     for (int ch = 0; ch < spec.channels; ++ch)
                     {
-                        audioPcmOutFile.write((const char *)frame->data[ch] + i * bytesPerSample, bytesPerSample);
                         SDL_QueueAudio(audioDeviceId, frame->data[ch] + i * bytesPerSample, bytesPerSample);
+                        audioPcmOutFile.write((const char *)frame->data[ch] + i * bytesPerSample, bytesPerSample);
                     }
                 }
             }
         };
 
+        auto spin = std::make_unique<spinner::spinner>(41);
+        spin->start();
+
         std::function<void(const AVMediaType type, AVFrame *frame)> onDecoderExit = [&](const AVMediaType type, AVFrame *frame)
         {
+            spin->stop();
             LOG_INFO("Dumped pcm data to file: %s", audioPcmOutFilename.c_str());
-
             audioPcmOutFile.close();
         };
 
@@ -769,7 +779,7 @@ namespace fpd
         }
         else
             audioDeviceId = ec;
-        SDL_PauseAudioDevice(audioDeviceId, 0);
+
         Window::instance().loop(onWindowLoop);
         Window::instance().closeAudio();
         Window::instance().destroy();
@@ -851,10 +861,10 @@ namespace fpd
             if (frame->pts == 0)
             {
                 videoStartTime = av_gettime_relative() / 1000000.0;
-                SDL_PauseAudioDevice(audioDeviceId, 0);
                 Window::instance().videoRefresh(frame->data[0], frame->linesize[0],
                                                 frame->data[1], frame->linesize[1],
                                                 frame->data[2], frame->linesize[2]);
+                Window::instance().render();
             }
             else
             {
@@ -916,6 +926,7 @@ namespace fpd
         }
         else
             audioDeviceId = ec;
+
         Window::instance().loop(onWindowLoop);
         Window::instance().destroy();
         decoder.stop();
