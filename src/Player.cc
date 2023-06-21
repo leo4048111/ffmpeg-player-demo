@@ -706,10 +706,11 @@ namespace fpd
             av_frame_unref(frame);
         };
 
-        decoder.start(onReceiveFrame, onDecoderExit);
 
         Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
                                 decoder.getVideoWidth(), decoder.getVideoHeight());
+                                
+        decoder.start(onReceiveFrame, onDecoderExit);
         Window::instance().loop(onWindowLoop);
         Window::instance().destroy();
         decoder.stop();
@@ -768,7 +769,6 @@ namespace fpd
 
         };
 
-        decoder.start(onReceiveFrame, onDecoderExit);
         Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
                                 decoder.getVideoWidth(), decoder.getVideoHeight());
 
@@ -780,6 +780,7 @@ namespace fpd
         else
             audioDeviceId = ec;
 
+        decoder.start(onReceiveFrame, onDecoderExit);
         Window::instance().loop(onWindowLoop);
         Window::instance().closeAudio();
         Window::instance().destroy();
@@ -915,8 +916,6 @@ namespace fpd
             av_frame_unref(frame);
         };
 
-        decoder.start(onReceiveFrame, onDecoderExit);
-
         Window::instance().init(PLAYER_WINDOW_WIDTH, PLAYER_WINDOW_HEIGHT,
                                 decoder.getVideoWidth(), decoder.getVideoHeight());
         if ((ec = Window::instance().openAudio(spec)) < 2)
@@ -927,6 +926,7 @@ namespace fpd
         else
             audioDeviceId = ec;
 
+        decoder.start(onReceiveFrame, onDecoderExit);
         Window::instance().loop(onWindowLoop);
         Window::instance().destroy();
         decoder.stop();
